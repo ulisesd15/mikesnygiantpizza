@@ -1,0 +1,12 @@
+body {
+  margin: 0;
+  background: #fff8f0;
+}
+
+.landing-container {
+  min-height: 100vh;
+}
+
+button:active {
+  transform: scale(0.98);
+}
