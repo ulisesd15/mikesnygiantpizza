@@ -1,0 +1,64 @@
+# Project File Structure
+
+```
+/ (root)
+├── .env
+├── .gitignore
+├── README.md
+├── package.json
+├── package-lock.json
+├── node_modules/
+├── client/
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── vite.config.js
+│   ├── vite.config.mjs
+│   ├── public/
+│   │   └── index.html
+│   ├── src/
+│   │   ├── app.jsx
+│   │   ├── index.css
+│   │   ├── main.jsx
+│   │   ├── assets/
+│   │   ├── components/
+│   │   │   ├── cart.jsx
+│   │   │   ├── footer.jsx
+│   │   │   ├── menucard.jsx
+│   │   │   └── navbar.jsx
+│   │   ├── context/
+│   │   │   └── context
+│   │   ├── hooks/
+│   │   │   └── hooks
+│   │   ├── pages/
+│   │   │   ├── about.jsx
+│   │   │   ├── checkout.jsx
+│   │   │   ├── footer.jsx
+│   │   │   ├── home.jsx
+│   │   │   └── menu.jsx
+│   │   ├── services/
+│   │   │   └── api.js
+├── server/
+│   ├── .env
+│   ├── package.json
+│   ├── server.js
+│   ├── config/
+│   │   └── config.js
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   ├── menuController.js
+│   │   └── orderController.js
+│   ├── middleware/
+│   │   └── authMiddleware.js
+│   ├── models/
+│   │   ├── index.js
+│   │   ├── menuItem.js
+│   │   ├── order.js
+│   │   ├── orderItem.js
+│   │   └── user.js
+│   ├── routes/
+│   │   ├── authRoutes.js
+│   │   ├── menuRoutes.js
+│   │   └── ourderRoutes.js
+│   ├── seeders/
+│   │   └── seedMenu.js
+```
