@@ -3,6 +3,10 @@ document.title = 'Mike\'s NY Giant Pizza - Stage 4 Menu';
 let currentUser = null;
 let token = null;
 
+let cart = JSON.parse(localStorage.getItem('pizzaCart')) || [];
+let menuItems = [];  // Store full menu for cart lookup
+
+
 function mainUI() {
   return `
     <div style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
@@ -123,9 +127,6 @@ function mainUI() {
   `;
 }
 
-
-let cart = JSON.parse(localStorage.getItem('pizzaCart')) || [];
-
 function toggleCart() {
   const drawer = document.getElementById('cart-drawer');
   const overlay = document.getElementById('cart-overlay');
@@ -191,9 +192,12 @@ function renderCart() {
 
 function updateCartCount() {
   const count = cart.reduce((sum, item) => sum + item.quantity, 0);
-  document.getElementById('cart-count').textContent = count;
-  document.getElementById('checkout-btn').style.display = count > 0 ? 'block' : 'none';
+  const countEl = document.getElementById('cart-count');
+  const checkoutBtn = document.getElementById('checkout-btn');
+  if (countEl) countEl.textContent = count;
+  if (checkoutBtn) checkoutBtn.style.display = count > 0 ? 'block' : 'none';
 }
+
 
 function updateCartQuantity(itemId, quantity) {
   if (quantity <= 0) {
@@ -248,21 +252,24 @@ function setupEventListeners() {
   // Tab switching
   window.showTab = (tab) => {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add('active');
     document.getElementById('menu-tab').style.display = tab === 'menu' ? 'block' : 'none';
     document.getElementById('admin-tab').style.display = tab === 'admin' ? 'block' : 'none';
   };
 
   // Menu form
-  document.getElementById('menu-form').onsubmit = addMenuItem;
+  document.getElementById('menu-form').addEventListener('submit', addMenuItem);
 }
+
 
 async function loadMenu() {
   const menu = await fetch('/api/menu').then(r => r.json());
+  menuItems = menu;  
   renderMenu(menu, 'menu-grid');
   if (currentUser?.role === 'admin') renderAdminMenu(menu, 'admin-menu-grid');
-  updateCartCount();  // ← ADD THIS LINE
+  updateCartCount(); 
 }
+
 
 
 function renderMenu(items, containerId) {
@@ -320,7 +327,8 @@ function pizzaGroupCard(sizes) {
       </p>
       
       <button class="add-to-cart-btn" data-group-id="${sizes[0].id}" 
-              style="width: 100%; background: #ff6b35; color: white; border: none; padding: 1rem; border-radius: 8px; font-size: 1.1rem; cursor: pointer;">
+        onclick="addToCartPizza(this)"
+        style="width: 100%; background: #ff6b35; color: white; border: none; padding: 1rem; border-radius: 8px; font-size: 1.1rem; cursor: pointer;">
         ➕ Add to Cart
       </button>
     </div>
