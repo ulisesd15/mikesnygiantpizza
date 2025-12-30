@@ -5,6 +5,13 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const { User } = require('./models');
+
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/menu', require('./routes/menu'));
+
 app.use(cors({
   origin: 'http://localhost:5173', 
   credentials: true
@@ -42,17 +49,6 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Get all menu items
-app.get('/api/menu', async (req, res) => {
-  try {
-    const { MenuItem } = require('./models');
-    const items = await MenuItem.findAll();
-    res.json(items);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Sync tables (development only)
 app.get('/api/db-sync', async (req, res) => {
   try {
@@ -62,7 +58,6 @@ app.get('/api/db-sync', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 
 // Sync DB + Test
 const { sequelize } = require('./models');
