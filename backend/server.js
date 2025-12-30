@@ -1,21 +1,39 @@
-// backend/server.js
 const express = require('express');
-app.use(cors());  // ← Allows ALL origins during dev
-
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', 
+  credentials: true
+}));
+
 app.use(express.json());
 
-// backend/server.js - ADD this route before app.listen()
+// ADD THESE 3 LINES HERE 👇
+app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
+
+// Your existing routes 👇
 app.get('/', (req, res) => {
   res.json({ message: 'Mike\'s NY Giant Pizza API' });
 });
 
-// Your existing /api/health stays the same
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -24,16 +42,6 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    message: 'Mike\'s NY Giant Pizza API running on port 5000',
-    timestamp: new Date().toISOString()
-  });
-});
-
 app.listen(PORT, () => {
   console.log(`🍕 Backend listening on http://localhost:${PORT}`);
-  console.log(`📡 Health check: http://localhost:${PORT}/api/health`);
 });
