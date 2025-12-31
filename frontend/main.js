@@ -3,144 +3,12 @@ document.title = 'Mike\'s NY Giant Pizza - Stage 4 Menu';
 let currentUser = null;
 let token = null;
 
+
 let cart = JSON.parse(localStorage.getItem('pizzaCart')) || [];
 let menuItems = [];  // Store full menu for cart lookup
 
 
-function mainUI() {
-  return `
-    <div style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
-      <header style="text-align: center; margin-bottom: 3rem;">
-        <h1 style="color: #ff6b35; font-size: 3rem; margin: 0;">🍕 Mike's NY Giant Pizza</h1>
-        <div style="background: #d4edda; color: #155724; padding: 1rem; border-radius: 12px; margin-top: 1rem;">
-          <h2>✅ STAGE 4: Menu Management Complete!</h2>
-          <p>Admin CRUD | Public menu | JWT protected</p>
-        </div>
-      </header>
 
-      <!-- Auth Status -->
-      <div id="auth-status" style="text-align: center; margin-bottom: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
-        <span id="user-info">👋 Guest - <button onclick="showAuth()" style="background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Login/Register</button></span>
-        <button id="logout-btn" onclick="logout()" style="display: none; background: #dc3545; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; margin-left: 1rem;">Logout</button>
-      </div>
-
-      <!-- Tabs -->
-      <div style="display: flex; gap: 1rem; margin-bottom: 2rem; justify-content: center; flex-wrap: wrap;">
-        <button onclick="showTab('menu')" class="tab-btn active">🍕 Public Menu</button>
-        <button onclick="showTab('orders')" class="tab-btn">📋 My Orders</button>
-        ${currentUser && currentUser.role === 'admin' ? '<button onclick="showTab(\'admin\')" class="tab-btn">⚙️ Admin Panel</button>' : ''}
-      </div>
-
-
-      <!-- Public Menu Tab -->
-      <div id="menu-tab" class="tab-content">
-        <div id="menu-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
-          <div style="text-align: center; padding: 3rem; color: #666;">Loading menu...</div>
-        </div>
-      </div>
-
-      <!-- My Orders Tab -->
-      <div id="orders-tab" class="tab-content" style="display: none;">
-        <div style="text-align: center; padding: 2rem; background: #f0f8ff; border-radius: 12px; margin-bottom: 2rem;">
-          <h2 style="color: #28a745;">📋 My Orders</h2>
-          <p>Your order history appears here</p>
-        </div>
-        <div id="orders-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;">
-          <div style="text-align: center; padding: 3rem; color: #666;">No orders yet - place one above! 🍕</div>
-        </div>
-      </div>
-
-
-      <!-- SHOPPING CART DRAWER -->
-      <div id="cart-drawer" style="position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; background: white; box-shadow: -4px 0 20px rgba(0,0,0,0.3); transition: right 0.3s; z-index: 1000; padding: 2rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-          <h2 style="margin: 0; color: #ff6b35;">🛒 Shopping Cart</h2>
-          <button onclick="toggleCart()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">×</button>
-        </div>
-        <div id="cart-items" style="max-height: 60vh; overflow-y: auto;"></div>
-        <div id="cart-total" style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #eee;">
-          <h3 style="margin: 0 0 1rem;">Total: $<span id="cart-subtotal">0.00</span></h3>
-          <button id="checkout-btn" class="button-primary" style="width: 100%;" onclick="checkout()">🚀 Checkout</button>
-        </div>
-      </div>
-
-      <!-- CART BUTTON (Floating) -->
-      <button id="cart-toggle" onclick="toggleCart()" style="position: fixed; bottom: 2rem; right: 2rem; width: 60px; height: 60px; background: #ff6b35; color: white; border: none; border-radius: 50%; font-size: 1.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(255,107,53,0.4); z-index: 999;">🛒<span id="cart-count" style="position: absolute; top: -8px; right: -8px; background: #dc3545; color: white; border-radius: 50%; width: 24px; height: 24px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center;">0</span></button>
-
-      <!-- OVERLAY -->
-      <div id="cart-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; display: none;" onclick="toggleCart()"></div>
-
-      <!-- Admin Panel Tab -->
-      <div id="admin-tab" class="tab-content" style="display: none;">
-        <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-bottom: 2rem;">
-          <h3 style="color: #333; margin-top: 0;">➕ Add New Menu Item</h3>
-          <form id="menu-form">
-            <input id="item-name" placeholder="Item Name (e.g. Giant Pepperoni)" style="input-style">
-            <input id="item-price" type="number" step="0.01" placeholder="Price" style="input-style">
-            <select id="item-category" style="input-style">
-              <option value="pizza">🍕 Pizza</option>
-              <option value="salad">🥗 Salad</option>
-              <option value="calzone">🌯 Calzone</option>
-              <option value="pasta">🍝 Pasta</option>
-              <option value="hamburger">🍔 Hamburger</option>
-              <option value="sub">🥖 Sub</option>
-              <option value="wings">🍗 Wings</option>
-              <option value="nuggets">🍟 Nuggets</option>
-              <option value="calamari">🦑 Calamari</option>
-            </select>
-            <textarea id="item-desc" placeholder="Description (optional)" style="input-style; height: 80px;"></textarea>
-            <div>
-              <label><input type="checkbox" id="item-available" checked> Available</label>
-              <button type="submit" style="button-primary">Add Item</button>
-            </div>
-          </form>
-        </div>
-        <div id="admin-menu-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem;"></div>
-      </div>
-
-      <!-- Auth Modal -->
-      <div id="auth-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
-        <div style="background: white; margin: 10% auto; padding: 2rem; border-radius: 12px; max-width: 400px; position: relative;">
-          <button onclick="hideAuth()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer;">×</button>
-          <!-- Auth form here -->
-        </div>
-      </div>
-    </div>
-
-    <style>
-      .tab-btn { padding: 1rem 2rem; background: #f8f9fa; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.3s; }
-      .tab-btn.active { background: #ff6b35; color: white; }
-      .tab-content { animation: fadeIn 0.3s; }
-      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      .input-style { width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-      .button-primary { background: #28a745; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-size: 1rem; }
-      .menu-card { border: 1px solid #ddd; border-radius: 12px; padding: 1.5rem; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: transform 0.2s; }
-      .menu-card:hover { transform: translateY(-4px); }
-      .admin-card { border: 2px solid #007bff; }
-      .admin-card .edit-btn { background: #007bff; }
-      .admin-card .delete-btn { background: #dc3545; }
-      .btn-sm { padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; color: white; margin: 0.25rem; font-size: 0.9rem; }
-      .order-card:hover { transform: translateY(-2px); }
-
-      
-      .size-selector {
-        width: 100%; 
-        padding: 0.75rem; 
-        border: 2px solid #ff6b35; 
-        border-radius: 8px; 
-        background: white; 
-        font-size: 1rem;
-        font-weight: 500;
-      }
-      .add-to-cart-btn {
-        transition: background 0.3s;
-      }
-      .add-to-cart-btn:hover {
-        background: #e55a2b !important;
-      }
-      </style>
-  `;
-}
 
 function toggleCart() {
   const drawer = document.getElementById('cart-drawer');
@@ -287,9 +155,147 @@ async function checkout() {
   }
 }
 
+
 function showOrderConfirmation(orderId, total) {
   alert(`✅ Order #${orderId} placed!\nTotal: $${total.toFixed(2)}\nCheck "My Orders" tab!`);
 }
+
+function mainUI() {
+  return `
+    <div style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
+      <header style="text-align: center; margin-bottom: 3rem;">
+        <h1 style="color: #ff6b35; font-size: 3rem; margin: 0;">🍕 Mike's NY Giant Pizza</h1>
+        <div style="background: #d4edda; color: #155724; padding: 1rem; border-radius: 12px; margin-top: 1rem;">
+          <h2>✅ STAGE 4: Menu Management Complete!</h2>
+          <p>Admin CRUD | Public menu | JWT protected</p>
+        </div>
+      </header>
+
+      <!-- Auth Status -->
+      <div id="auth-status" style="text-align: center; margin-bottom: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+        <span id="user-info">👋 Guest - <button onclick="showAuth()" style="background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Login/Register</button></span>
+        <button id="logout-btn" onclick="logout()" style="display: none; background: #dc3545; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; margin-left: 1rem;">Logout</button>
+      </div>
+
+      <!-- Tabs -->
+      <div style="display: flex; gap: 1rem; margin-bottom: 2rem; justify-content: center; flex-wrap: wrap;">
+        <button onclick="showTab('menu')" class="tab-btn active">🍕 Public Menu</button>
+        <button onclick="showTab('orders')" class="tab-btn">📋 My Orders</button>
+        ${currentUser && currentUser.role === 'admin' ? '<button onclick="showTab(\'admin\')" class="tab-btn">⚙️ Admin Panel</button>' : ''}
+      </div>
+
+
+      <!-- Public Menu Tab -->
+      <div id="menu-tab" class="tab-content">
+        <div id="menu-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
+          <div style="text-align: center; padding: 3rem; color: #666;">Loading menu...</div>
+        </div>
+      </div>
+
+      <!-- My Orders Tab -->
+      <div id="orders-tab" class="tab-content" style="display: none;">
+        <div style="text-align: center; padding: 2rem; background: #f0f8ff; border-radius: 12px; margin-bottom: 2rem;">
+          <h2 style="color: #28a745;">📋 My Orders</h2>
+          <p>Your order history appears here</p>
+        </div>
+        <div id="orders-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;">
+          <div style="text-align: center; padding: 3rem; color: #666;">No orders yet - place one above! 🍕</div>
+        </div>
+      </div>
+
+
+      <!-- SHOPPING CART DRAWER -->
+      <div id="cart-drawer" style="position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; background: white; box-shadow: -4px 0 20px rgba(0,0,0,0.3); transition: right 0.3s; z-index: 1000; padding: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+          <h2 style="margin: 0; color: #ff6b35;">🛒 Shopping Cart</h2>
+          <button onclick="toggleCart()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">×</button>
+        </div>
+        <div id="cart-items" style="max-height: 60vh; overflow-y: auto;"></div>
+        <div id="cart-total" style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #eee;">
+          <h3 style="margin: 0 0 1rem;">Total: $<span id="cart-subtotal">0.00</span></h3>
+          <button id="checkout-btn" class="button-primary" style="width: 100%;" onclick="checkout()">🚀 Checkout</button>
+        </div>
+      </div>
+
+      <!-- CART BUTTON (Floating) -->
+      <button id="cart-toggle" onclick="toggleCart()" style="position: fixed; bottom: 2rem; right: 2rem; width: 60px; height: 60px; background: #ff6b35; color: white; border: none; border-radius: 50%; font-size: 1.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(255,107,53,0.4); z-index: 999;">🛒<span id="cart-count" style="position: absolute; top: -8px; right: -8px; background: #dc3545; color: white; border-radius: 50%; width: 24px; height: 24px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center;">0</span></button>
+
+      <!-- OVERLAY -->
+      <div id="cart-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; display: none;" onclick="toggleCart()"></div>
+
+      <!-- Admin Panel Tab -->
+      <div id="admin-tab" class="tab-content" style="display: none;">
+        <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+          <h3 style="color: #333; margin-top: 0;">➕ Add New Menu Item</h3>
+          <form id="menu-form">
+            <input id="item-name" placeholder="Item Name (e.g. Giant Pepperoni)" style="input-style">
+            <input id="item-price" type="number" step="0.01" placeholder="Price" style="input-style">
+            <select id="item-category" style="input-style">
+              <option value="pizza">🍕 Pizza</option>
+              <option value="salad">🥗 Salad</option>
+              <option value="calzone">🌯 Calzone</option>
+              <option value="pasta">🍝 Pasta</option>
+              <option value="hamburger">🍔 Hamburger</option>
+              <option value="sub">🥖 Sub</option>
+              <option value="wings">🍗 Wings</option>
+              <option value="nuggets">🍟 Nuggets</option>
+              <option value="calamari">🦑 Calamari</option>
+            </select>
+            <textarea id="item-desc" placeholder="Description (optional)" style="input-style; height: 80px;"></textarea>
+            <div>
+              <label><input type="checkbox" id="item-available" checked> Available</label>
+              <button type="submit" style="button-primary">Add Item</button>
+            </div>
+          </form>
+        </div>
+        <div id="admin-menu-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem;"></div>
+      </div>
+
+      <!-- Auth Modal -->
+      <div id="auth-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="background: white; margin: 10% auto; padding: 2rem; border-radius: 12px; max-width: 400px; position: relative;">
+          <button onclick="hideAuth()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer;">×</button>
+          <!-- Auth form here -->
+        </div>
+      </div>
+    </div>
+
+    <style>
+      .tab-btn { padding: 1rem 2rem; background: #f8f9fa; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.3s; }
+      .tab-btn.active { background: #ff6b35; color: white; }
+      .tab-content { animation: fadeIn 0.3s; }
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      .input-style { width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+      .button-primary { background: #28a745; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+      .menu-card { border: 1px solid #ddd; border-radius: 12px; padding: 1.5rem; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: transform 0.2s; }
+      .menu-card:hover { transform: translateY(-4px); }
+      .admin-card { border: 2px solid #007bff; }
+      .admin-card .edit-btn { background: #007bff; }
+      .admin-card .delete-btn { background: #dc3545; }
+      .btn-sm { padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; color: white; margin: 0.25rem; font-size: 0.9rem; }
+      .order-card:hover { transform: translateY(-2px); }
+
+      
+      .size-selector {
+        width: 100%; 
+        padding: 0.75rem; 
+        border: 2px solid #ff6b35; 
+        border-radius: 8px; 
+        background: white; 
+        font-size: 1rem;
+        font-weight: 500;
+      }
+      .add-to-cart-btn {
+        transition: background 0.3s;
+      }
+      .add-to-cart-btn:hover {
+        background: #e55a2b !important;
+      }
+      </style>
+  `;
+}
+
+
 
 // Orders Tab Functions
 async function loadOrders() {
@@ -579,5 +585,24 @@ function logout() {
   updateAuthUI();
   loadMenu();
 }
+
+
+window.toggleCart = toggleCart;
+window.addToCart = addToCart;
+window.renderCart = renderCart;
+window.updateCartCount = updateCartCount;
+window.updateCartQuantity = updateCartQuantity;
+window.removeFromCart = removeFromCart;
+window.showToast = showToast;
+window.checkout = checkout;
+window.showOrderConfirmation = showOrderConfirmation;
+window.loadOrders = loadOrders;
+window.renderOrders = renderOrders;
+window.orderCard = orderCard;
+window.addToCartPizza = addToCartPizza;
+window.updatePizzaPrice = updatePizzaPrice;
+window
+
+
 
 loadApp().catch(console.error);
