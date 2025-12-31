@@ -1,9 +1,10 @@
-// main.js - FIXED import (no handleAuthSubmit needed)
+// main.js - FIXED IMPORTS
 import { renderCartDrawer, initCartDrawer } from './utils/cartDrawer.js';
 import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './components/menuRenderer.js';
-import { renderAdminTab, addMenuItem } from './components/adminPanel.js';
+import { renderAdminTab, initAdminPanel } from './components/adminPanel.js';  // 🔥 ADD initAdminPanel
 import { renderOrdersTab, loadOrders } from './components/ordersTab.js';  
-import { checkAuth, updateAuthUI } from './auth.js'; 
+import { checkAuth, updateAuthUI } from './auth.js';
+
 
 document.title = 'Mike\'s NY Giant Pizza - Stage 4 Menu';
 
@@ -78,38 +79,61 @@ function mainUI() {
 }
 
 async function loadApp() {
-  await fetch('/api/db-sync');
-  document.getElementById('app').innerHTML = mainUI();
-  
-  // 🔥 ONE LINE: Initialize ALL modules
-  await Promise.all([
-    initCartDrawer(),
-    loadMenu(),
-    checkAuth(),
-    initMenuGlobalFunctions()
-  ]);
-  
-  window.showTab('menu');
+  try {
+    console.log('🔄 Initializing globals FIRST...');
+    
+    await Promise.all([
+      initCartDrawer(),           // window.toggleCart, window.checkout
+      initMenuGlobalFunctions(),  // window.addToCartPizza, window.updatePizzaPrice
+    ]);
+    
+    console.log('✅ Globals set - rendering HTML');
+    
+    
+    await fetch('/api/db-sync');
+    document.getElementById('app').innerHTML = mainUI();
+    
+    
+    await Promise.all([
+      checkAuth(),
+      loadMenu()
+    ]);
+    
+    window.showTab('menu');
+    console.log('✅ App fully loaded!');
+  } catch (error) {
+    console.error('App load failed:', error);
+    document.getElementById('app').innerHTML = '<h1 style="text-align: center; padding: 4rem; color: #dc3545;">🚨 App failed to load. Refresh page.</h1>';
+  }
 }
 
-// ✅ GLOBAL TAB SWITCHER (ONLY global function needed)
+
+
+// Add this AFTER loadApp() function
 window.showTab = (tab) => {
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
   document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add('active');
   
   // Hide all tabs
-  document.getElementById('menu-tab').style.display = 'none';
-  document.getElementById('orders-tab').style.display = 'none';
-  document.getElementById('admin-tab').style.display = 'none';
+  ['menu-tab', 'orders-tab', 'admin-tab'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
   
-  // Show selected + load data
   if (tab === 'menu') document.getElementById('menu-tab').style.display = 'block';
   if (tab === 'orders') {
     document.getElementById('orders-tab').style.display = 'block';
     loadOrders();
   }
-  if (tab === 'admin') document.getElementById('admin-tab').style.display = 'block';
+  if (tab === 'admin') {
+    document.getElementById('admin-tab').style.display = 'block';
+    initAdminPanel();  // 🔥 Re-wire form
+    window.loadAdminMenu?.();  // Load grid if exists
+  }
 };
+
+
+
 
 // Auth globals (from auth.js)
 window.showAuth = () => document.getElementById('auth-modal').style.display = 'block';
@@ -120,5 +144,70 @@ window.logout = () => {
   updateAuthUI();
 };
 window.showForgotPassword = () => showToast('Contact Mike for password reset! 📞', 'info');
+
+
+window.handleAuthSubmit = async (isRegister = false) => {
+  const email = document.getElementById('auth-email').value;
+  const password = document.getElementById('auth-password').value;
+  if (!email || !password) {
+    alert('Please fill all fields');
+    return;
+  }
+  
+  try {
+    const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    
+    if (res.ok) {
+      localStorage.setItem('token', data.token);
+      window.currentUser = data.user;
+      updateAuthUI();
+      window.hideAuth();
+      alert(`Welcome ${data.user.email}! 👋`);
+    } else {
+      alert(data.error || 'Login failed');
+    }
+  } catch (error) {
+    alert('Network error');
+  }
+};
+
+// Menu + Cart globals (ensure these exist)
+window.addToCart = window.addToCart || ((id) => console.log('Add to cart:', id));
+window.renderCart = window.renderCart || (() => console.log('Render cart'));
+window.checkout = window.checkout || (() => console.log('Checkout'));
+
+// 🔥 MENU GLOBALS - ADD WITH OTHER GLOBALS
+window.updatePizzaPrice = (select) => {
+  const groupId = select.dataset.groupId;
+  const priceEl = document.getElementById(`pizza-price-${groupId}`);
+  const selectedOption = select.options[select.selectedIndex];
+  if (priceEl && selectedOption.dataset.price) {
+    priceEl.textContent = `$${parseFloat(selectedOption.dataset.price).toFixed(2)}`;
+  }
+};
+
+window.addToCartPizza = (btn) => {
+  const groupId = btn.dataset.groupId;
+  const sizeSelect = document.querySelector(`.size-selector[data-group-id="${groupId}"]`);
+  if (sizeSelect && window.addToCart) {
+    window.addToCart(sizeSelect.value);
+  }
+};
+
+// Enhanced addToCart (fallback)
+window.addToCart = window.addToCart || ((itemId) => {
+  console.log('🛒 Added item:', itemId);
+  // cartStore should override this
+  alert('Added to cart! (cartStore will handle)');
+});
+
+loadApp().catch(console.error);
+
 
 loadApp().catch(console.error);
