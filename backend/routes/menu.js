@@ -24,6 +24,11 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+router.patch('/:id', async (req, res) => {
+  const [updated] = await Menu.update(req.body, { where: { id: req.params.id } });
+  res.json({ message: 'Updated' });
+});
+
 // CREATE (admin only)
 router.post('/', auth, adminAuth, async (req, res) => {
   try {
