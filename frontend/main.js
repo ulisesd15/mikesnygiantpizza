@@ -9,157 +9,6 @@ let menuItems = [];  // Store full menu for cart lookup
 
 
 
-
-function toggleCart() {
-  const drawer = document.getElementById('cart-drawer');
-  const overlay = document.getElementById('cart-overlay');
-  const cartBtn = document.getElementById('cart-toggle');
-  
-  if (drawer.style.right === '0px') {
-    drawer.style.right = '-400px';
-    overlay.style.display = 'none';
-    cartBtn.style.background = '#ff6b35';
-  } else {
-    drawer.style.right = '0px';
-    overlay.style.display = 'block';
-    cartBtn.style.background = '#28a745';
-    renderCart();
-  }
-}
-
-function addToCart(itemId) {
-  const item = menuItems.find(i => i.id === parseInt(itemId));
-  if (!item) return;
-  
-  const existing = cart.find(c => c.id === itemId);
-  if (existing) {
-    existing.quantity += 1;
-  } else {
-    cart.push({ id: itemId, quantity: 1, ...item });
-  }
-  
-  localStorage.setItem('pizzaCart', JSON.stringify(cart));
-  updateCartCount();
-  showToast('Added to cart! 🛒');
-}
-
-function renderCart() {
-  const container = document.getElementById('cart-items');
-  const subtotalEl = document.getElementById('cart-subtotal');
-  
-  if (cart.length === 0) {
-    container.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Your cart is empty 🍕</p>';
-    subtotalEl.textContent = '0.00';
-    return;
-  }
-  
-  container.innerHTML = cart.map(item => `
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid #eee;">
-      <div>
-        <h4 style="margin: 0 0 0.25rem;">${item.name} ${item.size ? `(${item.size})` : ''}</h4>
-        <p style="margin: 0; color: #28a745; font-weight: bold;">$${item.price}</p>
-      </div>
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <button onclick="updateCartQuantity(${item.id}, ${item.quantity - 1})" style="width: 32px; height: 32px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">−</button>
-        <span style="min-width: 24px; text-align: center; font-weight: bold;">${item.quantity}</span>
-        <button onclick="updateCartQuantity(${item.id}, ${item.quantity + 1})" style="width: 32px; height: 32px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">+</button>
-        <button onclick="removeFromCart(${item.id})" style="background: #dc3545; color: white; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer;">×</button>
-        <span style="font-weight: bold;">$${(item.price * item.quantity).toFixed(2)}</span>
-      </div>
-    </div>
-  `).join('');
-  
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  subtotalEl.textContent = subtotal.toFixed(2);
-}
-
-function updateCartCount() {
-  const count = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const countEl = document.getElementById('cart-count');
-  const checkoutBtn = document.getElementById('checkout-btn');
-  if (countEl) countEl.textContent = count;
-  if (checkoutBtn) checkoutBtn.style.display = count > 0 ? 'block' : 'none';
-}
-
-
-function updateCartQuantity(itemId, quantity) {
-  if (quantity <= 0) {
-    removeFromCart(itemId);
-    return;
-  }
-  const item = cart.find(c => c.id === itemId);
-  if (item) item.quantity = quantity;
-  localStorage.setItem('pizzaCart', JSON.stringify(cart));
-  renderCart();
-  updateCartCount();
-}
-
-function removeFromCart(itemId) {
-  cart = cart.filter(c => c.id !== itemId);
-  localStorage.setItem('pizzaCart', JSON.stringify(cart));
-  renderCart();
-  updateCartCount();
-}
-
-function showToast(message) {
-  const toast = document.createElement('div');
-  toast.style.cssText = `
-    position: fixed; top: 2rem; right: 2rem; background: #28a745; 
-    color: white; padding: 1rem 2rem; border-radius: 8px; 
-    z-index: 1001; transform: translateX(400px); transition: transform 0.3s;
-  `;
-  toast.textContent = message;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.style.transform = 'translateX(0)', 10);
-  setTimeout(() => {
-    toast.style.transform = 'translateX(400px)';
-    setTimeout(() => document.body.removeChild(toast), 300);
-  }, 2000);
-}
-
-async function checkout() {
-  if (cart.length === 0) return;
-  
-  const orderData = {
-    items: cart.map(item => ({
-      id: item.id,
-      name: item.name,
-      size: item.size || 'N/A',
-      price: item.price,
-      quantity: item.quantity
-    })),
-    subtotal: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-    timestamp: new Date().toISOString(),
-    status: 'pending'
-  };
-
-  try {
-    const res = await fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(orderData)
-    });
-
-    if (res.ok) {
-      const order = await res.json();
-      cart = []; // Clear cart
-      localStorage.setItem('pizzaCart', JSON.stringify(cart));
-      updateCartCount();
-      toggleCart(); // Close cart
-      showOrderConfirmation(order.id, orderData.subtotal);
-    } else {
-      alert('Checkout failed - try again!');
-    }
-  } catch (error) {
-    alert('Network error - check connection!');
-  }
-}
-
-
-function showOrderConfirmation(orderId, total) {
-  alert(`✅ Order #${orderId} placed!\nTotal: $${total.toFixed(2)}\nCheck "My Orders" tab!`);
-}
-
 function mainUI() {
   return `
     <div style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
@@ -185,12 +34,7 @@ function mainUI() {
       </div>
 
 
-      <!-- Public Menu Tab -->
-      <div id="menu-tab" class="tab-content">
-        <div id="menu-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
-          <div style="text-align: center; padding: 3rem; color: #666;">Loading menu...</div>
-        </div>
-      </div>
+      
 
       <!-- My Orders Tab -->
       <div id="orders-tab" class="tab-content" style="display: none;">
@@ -204,25 +48,7 @@ function mainUI() {
       </div>
 
 
-      <!-- SHOPPING CART DRAWER -->
-      <div id="cart-drawer" style="position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; background: white; box-shadow: -4px 0 20px rgba(0,0,0,0.3); transition: right 0.3s; z-index: 1000; padding: 2rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-          <h2 style="margin: 0; color: #ff6b35;">🛒 Shopping Cart</h2>
-          <button onclick="toggleCart()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">×</button>
-        </div>
-        <div id="cart-items" style="max-height: 60vh; overflow-y: auto;"></div>
-        <div id="cart-total" style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #eee;">
-          <h3 style="margin: 0 0 1rem;">Total: $<span id="cart-subtotal">0.00</span></h3>
-          <button id="checkout-btn" class="button-primary" style="width: 100%;" onclick="checkout()">🚀 Checkout</button>
-        </div>
-      </div>
-
-      <!-- CART BUTTON (Floating) -->
-      <button id="cart-toggle" onclick="toggleCart()" style="position: fixed; bottom: 2rem; right: 2rem; width: 60px; height: 60px; background: #ff6b35; color: white; border: none; border-radius: 50%; font-size: 1.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(255,107,53,0.4); z-index: 999;">🛒<span id="cart-count" style="position: absolute; top: -8px; right: -8px; background: #dc3545; color: white; border-radius: 50%; width: 24px; height: 24px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center;">0</span></button>
-
-      <!-- OVERLAY -->
-      <div id="cart-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; display: none;" onclick="toggleCart()"></div>
-
+      
       <!-- Admin Panel Tab -->
       <div id="admin-tab" class="tab-content" style="display: none;">
         <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-bottom: 2rem;">
@@ -294,7 +120,6 @@ function mainUI() {
       </style>
   `;
 }
-
 
 
 // Orders Tab Functions
@@ -375,13 +200,7 @@ function setupEventListeners() {
 
 
 
-async function loadMenu() {
-  const menu = await fetch('/api/menu').then(r => r.json());
-  menuItems = menu;  
-  renderMenu(menu, 'menu-grid');
-  if (currentUser?.role === 'admin') renderAdminMenu(menu, 'admin-menu-grid');
-  updateCartCount(); 
-}
+
 
 
 
