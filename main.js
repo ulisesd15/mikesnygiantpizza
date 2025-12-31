@@ -25,10 +25,12 @@ function mainUI() {
       </div>
 
       <!-- Tabs -->
-      <div style="display: flex; gap: 1rem; margin-bottom: 2rem; justify-content: center;">
+      <div style="display: flex; gap: 1rem; margin-bottom: 2rem; justify-content: center; flex-wrap: wrap;">
         <button onclick="showTab('menu')" class="tab-btn active">🍕 Public Menu</button>
+        <button onclick="showTab('orders')" class="tab-btn">📋 My Orders</button>
         ${currentUser && currentUser.role === 'admin' ? '<button onclick="showTab(\'admin\')" class="tab-btn">⚙️ Admin Panel</button>' : ''}
       </div>
+
 
       <!-- Public Menu Tab -->
       <div id="menu-tab" class="tab-content">
@@ -36,6 +38,18 @@ function mainUI() {
           <div style="text-align: center; padding: 3rem; color: #666;">Loading menu...</div>
         </div>
       </div>
+
+      <!-- My Orders Tab -->
+      <div id="orders-tab" class="tab-content" style="display: none;">
+        <div style="text-align: center; padding: 2rem; background: #f0f8ff; border-radius: 12px; margin-bottom: 2rem;">
+          <h2 style="color: #28a745;">📋 My Orders</h2>
+          <p>Your order history appears here</p>
+        </div>
+        <div id="orders-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;">
+          <div style="text-align: center; padding: 3rem; color: #666;">No orders yet - place one above! 🍕</div>
+        </div>
+      </div>
+
 
       <!-- SHOPPING CART DRAWER -->
       <div id="cart-drawer" style="position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; background: white; box-shadow: -4px 0 20px rgba(0,0,0,0.3); transition: right 0.3s; z-index: 1000; padding: 2rem;">
@@ -106,7 +120,8 @@ function mainUI() {
       .admin-card .edit-btn { background: #007bff; }
       .admin-card .delete-btn { background: #dc3545; }
       .btn-sm { padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; color: white; margin: 0.25rem; font-size: 0.9rem; }
-      
+      .order-card:hover { transform: translateY(-2px); }
+
       
       .size-selector {
         width: 100%; 
@@ -234,9 +249,94 @@ function showToast(message) {
   }, 2000);
 }
 
-function checkout() {
+async function checkout() {
   if (cart.length === 0) return;
-  alert(`Checkout: $${cart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)} - Coming in Phase 6!`);
+  
+  const orderData = {
+    items: cart.map(item => ({
+      id: item.id,
+      name: item.name,
+      size: item.size || 'N/A',
+      price: item.price,
+      quantity: item.quantity
+    })),
+    subtotal: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+    timestamp: new Date().toISOString(),
+    status: 'pending'
+  };
+
+  try {
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderData)
+    });
+
+    if (res.ok) {
+      const order = await res.json();
+      cart = []; // Clear cart
+      localStorage.setItem('pizzaCart', JSON.stringify(cart));
+      updateCartCount();
+      toggleCart(); // Close cart
+      showOrderConfirmation(order.id, orderData.subtotal);
+    } else {
+      alert('Checkout failed - try again!');
+    }
+  } catch (error) {
+    alert('Network error - check connection!');
+  }
+}
+
+function showOrderConfirmation(orderId, total) {
+  alert(`✅ Order #${orderId} placed!\nTotal: $${total.toFixed(2)}\nCheck "My Orders" tab!`);
+}
+
+// Orders Tab Functions
+async function loadOrders() {
+  try {
+    const res = await fetch('/api/orders');
+    if (res.ok) {
+      const orders = await res.json();
+      renderOrders(orders, 'orders-grid');
+    }
+  } catch {
+    document.getElementById('orders-grid').innerHTML = 
+      '<div style="text-align: center; padding: 3rem; color: #666;">Login to see orders!</div>';
+  }
+}
+
+function renderOrders(orders, containerId) {
+  const container = document.getElementById(containerId);
+  if (orders.length === 0) {
+    container.innerHTML = '<div style="text-align: center; padding: 3rem; color: #666;">No orders yet - order some pizza! 🍕</div>';
+    return;
+  }
+  
+  container.innerHTML = orders.map(order => orderCard(order)).join('');
+}
+
+function orderCard(order) {
+  const total = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  return `
+    <div class="menu-card" style="border-left: 5px solid #28a745;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0; color: #28a745;">Order #${order.id}</h3>
+        <span style="font-size: 1.2rem; font-weight: bold;">$${total.toFixed(2)}</span>
+      </div>
+      <p style="color: #666; margin: 0 0 1rem;"><small>Placed: ${new Date(order.timestamp).toLocaleString()}</small></p>
+      <div style="font-size: 0.9rem;">
+        ${order.items.map(item => 
+          `<div style="display: flex; justify-content: space-between; padding: 0.25rem 0;">
+            <span>${item.name} (${item.size}) x${item.quantity}</span>
+            <span>$${(item.price * item.quantity).toFixed(2)}</span>
+          </div>`
+        ).join('')}
+      </div>
+      <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee; font-weight: bold;">
+        Total: $${total.toFixed(2)}
+      </div>
+    </div>
+  `;
 }
 
 
@@ -246,20 +346,27 @@ async function loadApp() {
   setupEventListeners();
   loadMenu();
   checkAuth();
+  showTab('menu');
 }
 
+
+
+
 function setupEventListeners() {
-  // Tab switching
   window.showTab = (tab) => {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add('active');
     document.getElementById('menu-tab').style.display = tab === 'menu' ? 'block' : 'none';
+    document.getElementById('orders-tab').style.display = tab === 'orders' ? 'block' : 'none';
     document.getElementById('admin-tab').style.display = tab === 'admin' ? 'block' : 'none';
+    
+    if (tab === 'orders') loadOrders(); // Load orders when tab opens
   };
 
-  // Menu form
   document.getElementById('menu-form').addEventListener('submit', addMenuItem);
 }
+
+
 
 
 async function loadMenu() {
