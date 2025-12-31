@@ -36,19 +36,23 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// // Get current user (protected)
-// app.get('/api/profile', async (req, res) => {
-//   try {
-//     const token = req.headers.authorization?.split(' ')[1];
-//     if (!token) return res.status(401).json({ error: 'No token' });
+// Add this to your backend auth router (UNCOMMENT + FIX):
+router.get('/profile', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'No token' });
     
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'mikes_pizza_secret_2025');
-//     const user = await User.findByPk(decoded.id, { attributes: ['id', 'email', 'role', 'name'] });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'mikes_pizza_super_secret_2025_change_in_prod');
+    const user = await User.findByPk(decoded.id, { 
+      attributes: ['id', 'email', 'role', 'name'] 
+    });
     
-//     res.json({ user });
-//   } catch (error) {
-//     res.status(401).json({ error: 'Invalid token' });
-//   }
-// });
+    if (!user) return res.status(401).json({ error: 'User not found' });
+    
+    res.json({ user });
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
 
 module.exports = router;
