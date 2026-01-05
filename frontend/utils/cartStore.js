@@ -9,38 +9,57 @@ export function setMenuItems(items) {
 
 // 👇 CART OPERATIONS 👇
 export function addToCart(itemId) {
-  const item = menuItems.find(i => i.id === parseInt(itemId));
+  const id = parseInt(itemId); // Ensure ID is a number
+  const item = menuItems.find(i => i.id === id);
+  
   if (!item) return false;
   
-  const existing = cart.find(c => c.id === itemId);
+  const existing = cart.find(c => c.id === id);
   if (existing) {
     existing.quantity += 1;
+    showToast(`Added another ${item.name} to cart!`);
   } else {
-    cart.push({ id: itemId, quantity: 1, ...item });
+    // Use the clean ID and spread item properties
+    cart.push({ ...item, id: id, quantity: 1 });
+    showToast(`Added ${item.name} to cart! 🛒`);
   }
   
-  localStorage.setItem('pizzaCart', JSON.stringify(cart));
+  saveAndRefresh();
   return true;
 }
 
 export function updateCartQuantity(itemId, quantity) {
+  const id = parseInt(itemId);
   if (quantity <= 0) {
-    removeFromCart(itemId);
+    removeFromCart(id);
     return;
   }
-  const item = cart.find(c => c.id === itemId);
+  const item = cart.find(c => c.id === id);
   if (item) item.quantity = quantity;
-  localStorage.setItem('pizzaCart', JSON.stringify(cart));
+  saveAndRefresh();
 }
 
 export function removeFromCart(itemId) {
-  cart = cart.filter(c => c.id !== itemId);
-  localStorage.setItem('pizzaCart', JSON.stringify(cart));
+  const id = parseInt(itemId);
+  cart = cart.filter(c => c.id !== id);
+  saveAndRefresh();
 }
 
 export function clearCart() {
   cart = [];
+  saveAndRefresh();
+}
+
+// Helper to save and update UI
+function saveAndRefresh() {
   localStorage.setItem('pizzaCart', JSON.stringify(cart));
+  updateCartCount();
+  
+  // If drawer is open, re-render it
+  const drawer = document.getElementById('cart-drawer');
+  if (drawer && drawer.style.right === '0px') {
+    renderCart();
+  }
 }
 
 export function getCartCount() {
@@ -155,4 +174,5 @@ export function initGlobalFunctions() {
   window.updateCartCount = updateCartCount;
   window.showToast = showToast;
   window.checkout = checkout;
+  window.setMenuItems = setMenuItems;
 }
