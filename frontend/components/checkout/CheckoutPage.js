@@ -14,7 +14,7 @@ let checkoutData = {
 export function renderCheckoutPage() {
   const cart = getCart();
   const subtotal = getCartTotal();
-  const tax = subtotal * 0.0825; // 8.25% tax (adjust as needed)
+  const tax = subtotal * 0.0825; // 8.25% tax
   const deliveryFee = checkoutData.orderType === 'delivery' ? 3.99 : 0;
   const total = subtotal + tax + deliveryFee;
 
@@ -95,7 +95,7 @@ export function renderCheckoutPage() {
             </div>
           </div>
 
-          <!-- Delivery Address (shown only if delivery selected) -->
+          <!-- Delivery Address -->
           <div id="delivery-section" class="checkout-section" style="display: ${checkoutData.orderType === 'delivery' ? 'block' : 'none'};">
             <h2 class="section-title">📍 Delivery Address</h2>
             <div class="form-group">
@@ -303,7 +303,7 @@ export function initCheckout() {
   
   // Pre-fill customer info if logged in
   if (window.currentUser) {
-    checkoutData.customerName = window.currentUser.name || '';
+    checkoutData.customerName = window.currentUser.name || window.currentUser.email.split('@')[0];
     checkoutData.customerEmail = window.currentUser.email || '';
   }
 
@@ -382,6 +382,7 @@ export function initCheckout() {
       const total = subtotal + tax + deliveryFee;
 
       const orderData = {
+        userId: window.currentUser?.id || null, // 👉 Tie order to user!
         ...checkoutData,
         items: cart.map(item => ({
           menuItemId: item.id,
@@ -403,21 +404,27 @@ export function initCheckout() {
       // TODO: Send to backend API
       // const response = await fetch('/api/orders', {
       //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
+      //   headers: { 
+      //     'Content-Type': 'application/json',
+      //     'Authorization': `Bearer ${localStorage.getItem('token')}`
+      //   },
       //   body: JSON.stringify(orderData)
       // });
       // const order = await response.json();
 
-      // Simulate API call for now
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       // Mock order response
       const mockOrder = {
-        id: Date.now().toString(),
+        id: Date.now(),
         orderNumber: `ORD-${Math.floor(Math.random() * 10000)}`,
         ...orderData,
         createdAt: new Date().toISOString()
       };
+
+      // 👉 Save order to localStorage (temporary until backend is ready)
+      saveOrderToLocalStorage(mockOrder);
 
       // Clear cart
       clearCart();
@@ -437,4 +444,50 @@ export function initCheckout() {
   };
 
   console.log('✅ Checkout initialized');
+}
+
+// 👇 Helper functions to manage orders in localStorage
+function saveOrderToLocalStorage(order) {
+  try {
+    // Get all orders
+    const allOrders = JSON.parse(localStorage.getItem('userOrders')) || [];
+    
+    // Add new order
+    allOrders.push(order);
+    
+    // Save back
+    localStorage.setItem('userOrders', JSON.stringify(allOrders));
+    
+    console.log('✅ Order saved to localStorage:', order.id);
+  } catch (error) {
+    console.error('❌ Failed to save order:', error);
+  }
+}
+
+// Export for use in ordersTab
+export function getUserOrders(userId) {
+  try {
+    const allOrders = JSON.parse(localStorage.getItem('userOrders')) || [];
+    
+    // If userId provided, filter by that user
+    // If null (guest), show all guest orders
+    if (userId) {
+      return allOrders.filter(order => order.userId === userId);
+    } else {
+      return allOrders.filter(order => !order.userId);
+    }
+  } catch (error) {
+    console.error('❌ Failed to load orders:', error);
+    return [];
+  }
+}
+
+// Export for use in admin panel
+export function getAllOrders() {
+  try {
+    return JSON.parse(localStorage.getItem('userOrders')) || [];
+  } catch (error) {
+    console.error('❌ Failed to load all orders:', error);
+    return [];
+  }
 }
