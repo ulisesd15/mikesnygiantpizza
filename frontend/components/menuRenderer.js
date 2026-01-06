@@ -14,8 +14,14 @@ export function renderMenuTab() {
 export async function loadMenu() {
   try {
     console.log('🔄 Fetching menu from API...');
-    const menu = await fetch('/api/menu').then(r => r.json());
-    console.log('✅ Menu loaded:', menu);
+    const response = await fetch('/api/menu');
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const menu = await response.json();
+    console.log('✅ Menu loaded:', menu.length, 'items');
     
     menuItems = menu;
     
@@ -27,18 +33,21 @@ export async function loadMenu() {
       console.warn('⚠️ window.setMenuItems not found');
     }
     
-    // Wait for DOM to be ready before rendering
-    setTimeout(() => {
-      const container = document.getElementById('menu-grid');
-      if (container) {
-        renderMenu(menu, 'menu-grid');
-        console.log('✅ Menu rendered to DOM');
-      } else {
-        console.error('❌ menu-grid container not found');
-      }
-    }, 100);
+    // 🔥 RENDER IMMEDIATELY - no setTimeout!
+    const container = document.getElementById('menu-grid');
+    if (container) {
+      console.log('🎨 Rendering menu to DOM...');
+      renderMenu(menu, 'menu-grid');
+      console.log('✅ Menu rendered to DOM');
+    } else {
+      console.error('❌ menu-grid container not found!');
+    }
     
-    window.updateCartCount?.(); // Update cart badge
+    // Update cart badge
+    if (typeof window.updateCartCount === 'function') {
+      window.updateCartCount();
+    }
+    
     return menu;
   } catch (error) {
     console.error('❌ Menu load failed:', error);
