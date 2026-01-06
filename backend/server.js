@@ -9,9 +9,6 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { User, sequelize } = require('./models');
 
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/menu', require('./routes/menu'));
-
 app.use(cors({
   origin: 'http://localhost:5173', 
   credentials: true
@@ -35,6 +32,10 @@ app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`);
   next();
 });
+
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/menu', require('./routes/menu'));
+app.use('/api/admin', require('./routes/admin'));
 
 // Your existing routes 👇
 app.get('/', (req, res) => {
