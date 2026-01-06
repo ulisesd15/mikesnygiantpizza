@@ -319,10 +319,17 @@ export function initCheckout() {
     document.querySelectorAll('.radio-card').forEach(card => {
       card.classList.remove('active');
     });
-    document.querySelector(`.radio-card:has([value="${type}"])`).classList.add('active');
+    const activeCard = Array.from(document.querySelectorAll('.radio-card')).find(card => 
+      card.querySelector(`[value="${type}"]`)
+    );
+    if (activeCard) activeCard.classList.add('active');
     
     // Re-render to update totals
-    document.getElementById('checkout-tab').innerHTML = renderCheckoutPage();
+    const checkoutTab = document.getElementById('checkout-tab');
+    if (checkoutTab) {
+      checkoutTab.innerHTML = renderCheckoutPage();
+      initCheckout();
+    }
   };
 
   window.updateCheckoutField = (field, value) => {
@@ -335,22 +342,22 @@ export function initCheckout() {
     // Validation
     if (!checkoutData.customerName.trim()) {
       alert('⚠️ Please enter your name');
-      document.getElementById('customerName').focus();
+      document.getElementById('customerName')?.focus();
       return;
     }
     if (!checkoutData.customerPhone.trim()) {
       alert('⚠️ Please enter your phone number');
-      document.getElementById('customerPhone').focus();
+      document.getElementById('customerPhone')?.focus();
       return;
     }
     if (!checkoutData.customerEmail.trim()) {
       alert('⚠️ Please enter your email');
-      document.getElementById('customerEmail').focus();
+      document.getElementById('customerEmail')?.focus();
       return;
     }
     if (checkoutData.orderType === 'delivery' && !checkoutData.deliveryAddress.trim()) {
       alert('⚠️ Please enter your delivery address');
-      document.getElementById('deliveryAddress').focus();
+      document.getElementById('deliveryAddress')?.focus();
       return;
     }
 
@@ -362,8 +369,10 @@ export function initCheckout() {
 
     // Disable button
     const btn = document.getElementById('place-order-btn');
-    btn.disabled = true;
-    btn.textContent = '🔄 Processing...';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '🔄 Processing...';
+    }
 
     try {
       // Prepare order data
@@ -381,10 +390,12 @@ export function initCheckout() {
           price: item.price,
           quantity: item.quantity
         })),
-        subtotal: subtotal.toFixed(2),
-        tax: tax.toFixed(2),
-        deliveryFee: deliveryFee.toFixed(2),
-        total: total.toFixed(2)
+        subtotal: parseFloat(subtotal.toFixed(2)),
+        tax: parseFloat(tax.toFixed(2)),
+        deliveryFee: parseFloat(deliveryFee.toFixed(2)),
+        total: parseFloat(total.toFixed(2)),
+        status: 'pending',
+        estimatedTime: 35
       };
 
       console.log('Order data:', orderData);
@@ -395,25 +406,33 @@ export function initCheckout() {
       //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify(orderData)
       // });
+      // const order = await response.json();
 
       // Simulate API call for now
       await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Mock order response
+      const mockOrder = {
+        id: Date.now().toString(),
+        orderNumber: `ORD-${Math.floor(Math.random() * 10000)}`,
+        ...orderData,
+        createdAt: new Date().toISOString()
+      };
 
       // Clear cart
       clearCart();
 
-      // Show success and redirect
-      alert('✅ Order placed successfully!');
-      window.showTab('menu');
-
-      // TODO: Redirect to order confirmation page
-      // window.location.href = `/order-confirmation/${orderId}`;
+      // Navigate to order confirmation
+      console.log('✅ Order placed successfully!');
+      window.showOrderConfirmation(mockOrder);
 
     } catch (error) {
       console.error('❌ Order failed:', error);
       alert('❌ Failed to place order. Please try again.');
-      btn.disabled = false;
-      btn.textContent = `📦 Place Order`;
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = `📦 Place Order`;
+      }
     }
   };
 
