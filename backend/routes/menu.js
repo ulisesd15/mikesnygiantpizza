@@ -24,6 +24,11 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+router.patch('/:id', async (req, res) => {
+  const [updated] = await Menu.update(req.body, { where: { id: req.params.id } });
+  res.json({ message: 'Updated' });
+});
+
 // CREATE (admin only)
 router.post('/', auth, adminAuth, async (req, res) => {
   try {
@@ -58,6 +63,38 @@ router.delete('/:id', auth, adminAuth, async (req, res) => {
   }
 });
 
+//Orders
+// Add to your API routes file (e.g. server.js)
+router.post('/api/orders', async (req, res) => {
+  try {
+    const order = {
+      id: Date.now().toString(), // Simple ID for now
+      ...req.body,
+      userId: req.user?.id || 'guest', // From JWT if logged in
+      createdAt: new Date()
+    };
+    
+    // Save to DB/file/localStorage - example with simple array:
+    const orders = JSON.parse(fs.readFileSync('./orders.json', 'utf8')) || [];
+    orders.push(order);
+    fs.writeFileSync('./orders.json', JSON.stringify(orders, null, 2));
+    
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+router.get('/api/orders', async (req, res) => {
+  try {
+    const orders = JSON.parse(fs.readFileSync('./orders.json', 'utf8')) || [];
+    // Filter by user if logged in, or show last 10 for demo
+    const userOrders = req.user ? orders.filter(o => o.userId === req.user.id) : orders.slice(-10);
+    res.json(userOrders);
+  } catch (error) {
+    res.json([]);
+  }
+});
 
 
 
