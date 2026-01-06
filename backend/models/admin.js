@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { User, Order, MenuItem } = require('../models');
-const { auth, adminAuth } = require('../middleware/auth');
+const { verifyToken, isAdmin } = require('../middleware/auth');
 
 // Get Dashboard Stats
-router.get('/stats', [auth, adminAuth], async (req, res) => {
+router.get('/stats', [verifyToken, isAdmin], async (req, res) => {
   try {
     const totalUsers = await User.count();
     const totalOrders = await Order.count();
@@ -17,19 +17,6 @@ router.get('/stats', [auth, adminAuth], async (req, res) => {
       pendingOrders,
       totalMenuItems
     });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Get All Users (For Admin Users Tab)
-router.get('/users', [auth, adminAuth], async (req, res) => {
-  try {
-    const users = await User.findAll({
-      attributes: { exclude: ['password'] }, // Security: Don't send passwords
-      order: [['createdAt', 'DESC']]
-    });
-    res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
