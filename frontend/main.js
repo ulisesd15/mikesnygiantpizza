@@ -2,13 +2,19 @@
 import { renderCartDrawer, initCartDrawer } from './utils/cartDrawer.js';
 import { initGlobalFunctions } from './utils/cartStore.js';
 import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './components/menuRenderer.js';
-import { renderAdminTab, initAdminPanel } from './components/adminPanel.js';  
+import { renderAdminTab, initAdminPanel } from './components/adminPanel.js';
 import { renderOrdersTab, loadOrders } from './components/ordersTab.js';  
 import { checkAuth, updateAuthUI } from './auth.js';
 
+document.title = 'Mike\'s NY Giant Pizza - Stage 4 Menu';
+
+// 🔧 DEFINE showTab BEFORE loadApp() to avoid timing issues
 window.showTab = (tab) => {
+  console.log('📑 Switching to tab:', tab);
+  
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-  document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add('active');
+  const activeBtn = document.querySelector(`[onclick="showTab('${tab}')"]`);
+  if (activeBtn) activeBtn.classList.add('active');
   
   // Hide all tabs
   ['menu-tab', 'orders-tab', 'admin-tab'].forEach(id => {
@@ -16,20 +22,30 @@ window.showTab = (tab) => {
     if (el) el.style.display = 'none';
   });
   
-  if (tab === 'menu') document.getElementById('menu-tab').style.display = 'block';
+  if (tab === 'menu') {
+    const menuTab = document.getElementById('menu-tab');
+    if (menuTab) {
+      menuTab.style.display = 'block';
+      console.log('✅ Menu tab now visible');
+    }
+  }
+  
   if (tab === 'orders') {
-    document.getElementById('orders-tab').style.display = 'block';
-    loadOrders();
+    const ordersTab = document.getElementById('orders-tab');
+    if (ordersTab) {
+      ordersTab.style.display = 'block';
+      loadOrders();
+    }
   }
-  // In window.showTab() - update admin case:
+  
   if (tab === 'admin') {
-    document.getElementById('admin-tab').style.display = 'block';
-    setTimeout(initAdminPanel, 50);  // After DOM renders
+    const adminTab = document.getElementById('admin-tab');
+    if (adminTab) {
+      adminTab.style.display = 'block';
+      setTimeout(initAdminPanel, 50);
+    }
   }
-
 };
-
-document.title = 'Mike\'s NY Giant Pizza - Stage 4 Menu';
 
 function mainUI() {
   return `
@@ -104,27 +120,38 @@ function mainUI() {
 async function loadApp() {
   console.log('🚀 Starting app load...');
   
-  
   // 1. Render HTML FIRST
   document.getElementById('app').innerHTML = mainUI();
+  console.log('✅ HTML rendered');
   
-  // 2. Bind buttons
+  // 2. Initialize global functions (must happen BEFORE loadMenu)
   initMenuGlobalFunctions();
   initCartDrawer();
   initGlobalFunctions();
+  console.log('✅ Global functions initialized');
   
-  // 3. Load menu data (uses your working MenuItems query)
+  // 3. Load menu data - this will populate the menu-grid container
+  console.log('🔄 Loading menu...');
   await loadMenu();
+  console.log('✅ Menu loaded');
+  
+  // 4. Check authentication
   await checkAuth();
   
-  window.showTab('menu');
+  // 5. Menu tab is already visible by default (display: block in mainUI)
+  // No need to call showTab('menu') - it's already showing!
+  
   console.log('✅ App fully loaded!');
 }
 
-
-
-
-
-
-
-loadApp().catch(console.error);
+// Start the app
+loadApp().catch(error => {
+  console.error('❌ App failed to load:', error);
+  document.getElementById('app').innerHTML = `
+    <div style="text-align: center; padding: 3rem; color: #dc3545;">
+      <h2>Failed to load application</h2>
+      <p>${error.message}</p>
+      <button onclick="location.reload()" style="background: #007bff; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; margin-top: 1rem;">Reload Page</button>
+    </div>
+  `;
+});
