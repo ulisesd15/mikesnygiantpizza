@@ -112,6 +112,7 @@ export function initCartDrawer() {
   console.log('🔧 Initializing cart drawer...');
   
   window.toggleCart = toggleCart;
+  window.updateCheckoutButton = updateCheckoutButton; // Export globally
   
   initGlobalFunctions();
   updateCartCount();
