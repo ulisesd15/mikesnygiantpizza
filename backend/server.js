@@ -19,7 +19,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
@@ -32,9 +32,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ Now register routes (AFTER middleware, AFTER models loaded)
+// ✅ Register API routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/menu', require('./routes/menu'));
+app.use('/api/orders', require('./routes/orders')); // 🆕 NEW!
 
 // ✅ Basic routes
 app.get('/', (req, res) => {
@@ -65,7 +66,7 @@ app.get('/api/db-test', async (req, res) => {
   }
 });
 
-// ✅ ONE db-sync route (use { alter: true } for safety)
+// ✅ DB sync route (use { alter: true } for safety)
 app.get('/api/db-sync', async (req, res) => {
   try {
     await sequelize.sync({ alter: true }); // Safe - won't drop data
