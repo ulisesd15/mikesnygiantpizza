@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 5001;
 
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { User } = require('./models');
+const { User, sequelize } = require('./models');
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/menu', require('./routes/menu'));
@@ -59,21 +59,25 @@ app.get('/api/db-sync', async (req, res) => {
   }
 });
 
-// Sync DB + Test
-const { sequelize } = require('./models');
-
-app.get('/api/db-sync', async (req, res) => {
+// Reset DB (development only) - WARNING: Drops tables!
+app.get('/api/db-reset', async (req, res) => {
   try {
     await sequelize.sync({ force: true }); // WARNING: Drops tables!
-    res.json({ status: 'success', message: 'DB synced!' });
+    res.json({ status: 'success', message: 'DB reset and synced!' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🍕 Backend listening on http://localhost:${PORT}`);
+  try {
+    await sequelize.sync({ alter: true });
+    console.log('✅ Database tables synced successfully');
+  } catch (err) {
+    console.error('❌ Database sync failed:', err.message);
+  }
 });
 
 // Test DB connection

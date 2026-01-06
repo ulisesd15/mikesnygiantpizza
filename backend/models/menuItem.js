@@ -17,9 +17,8 @@ const MenuItem = sequelize.define('MenuItem', {
     allowNull: false
   },
   size: {                            
-    type: DataTypes.ENUM('14"', '16"', '20"', '28"'),
-    allowNull: false,
-    defaultValue: '16"'
+    type: DataTypes.STRING,
+    allowNull: true
   },
   category: {
     type: DataTypes.ENUM(
@@ -32,7 +31,11 @@ const MenuItem = sequelize.define('MenuItem', {
       'wings',           
       'nuggets',         
       'calamari',        
-      'appetizer'        // ← ADDED: Mozzarella sticks, etc.
+      'appetizer',       // ← ADDED: Mozzarella sticks, etc.
+      'combo',
+      'drink',
+      'dessert',
+      'side'
     ),
     allowNull: false
   },
