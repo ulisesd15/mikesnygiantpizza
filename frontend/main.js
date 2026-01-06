@@ -2,10 +2,32 @@
 import { renderCartDrawer, initCartDrawer } from './utils/cartDrawer.js';
 import { initGlobalFunctions } from './utils/cartStore.js';
 import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './components/menuRenderer.js';
-import { renderAdminTab, initAdminPanel } from './components/adminPanel.js';  // 🔥 ADD initAdminPanel
+import { renderAdminTab, initAdminPanel } from './components/adminPanel.js';  
 import { renderOrdersTab, loadOrders } from './components/ordersTab.js';  
 import { checkAuth, updateAuthUI } from './auth.js';
 
+window.showTab = (tab) => {
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add('active');
+  
+  // Hide all tabs
+  ['menu-tab', 'orders-tab', 'admin-tab'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  
+  if (tab === 'menu') document.getElementById('menu-tab').style.display = 'block';
+  if (tab === 'orders') {
+    document.getElementById('orders-tab').style.display = 'block';
+    loadOrders();
+  }
+  // In window.showTab() - update admin case:
+  if (tab === 'admin') {
+    document.getElementById('admin-tab').style.display = 'block';
+    setTimeout(initAdminPanel, 50);  // After DOM renders
+  }
+
+};
 
 document.title = 'Mike\'s NY Giant Pizza - Stage 4 Menu';
 
@@ -104,30 +126,5 @@ async function loadApp() {
 
 
 
-
-
-// Add this AFTER loadApp() function
-window.showTab = (tab) => {
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-  document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add('active');
-  
-  // Hide all tabs
-  ['menu-tab', 'orders-tab', 'admin-tab'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
-  
-  if (tab === 'menu') document.getElementById('menu-tab').style.display = 'block';
-  if (tab === 'orders') {
-    document.getElementById('orders-tab').style.display = 'block';
-    loadOrders();
-  }
-  // In window.showTab() - update admin case:
-  if (tab === 'admin') {
-    document.getElementById('admin-tab').style.display = 'block';
-    setTimeout(initAdminPanel, 50);  // After DOM renders
-  }
-
-};
 
 loadApp().catch(console.error);
