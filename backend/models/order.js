@@ -16,16 +16,6 @@ const Order = sequelize.define('Order', {
     allowNull: false
   },
   
-  // User association (null for guest orders)
-  userId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    references: {
-      model: 'Users',
-      key: 'id'
-    }
-  },
-  
   // Guest customer info (for non-logged-in users)
   guestName: {
     type: DataTypes.STRING,
@@ -108,5 +98,6 @@ const Order = sequelize.define('Order', {
     }
   }
 });
+
 
 module.exports = Order;

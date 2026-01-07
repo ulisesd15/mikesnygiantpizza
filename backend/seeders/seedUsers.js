@@ -3,12 +3,13 @@ require('dotenv').config();
 
 const bcrypt = require('bcrypt');
 const { sequelize, User } = require('../models');
+const { patch } = require('../routes/auth');
 
 async function seedUsers() {
   try {
     console.log('🌱 Seeding users...');
 
-    await sequelize.authenticate();
+    await User.sync({ alter: true });
 
     const saltRounds = 10;
 
@@ -18,16 +19,20 @@ async function seedUsers() {
 
     const users = [
       {
+        id: 2,
         email: 'admin@mikes.com',
         password: adminPasswordHash,
         role: 'admin',
-        name: 'Admin',
+        name: 'Admin'
       },
       {
+        id: 3,
         email: 'ulises@mikes.com',
         password: ulisesPasswordHash,
         role: 'admin', // or 'customer' if you prefer
         name: 'Ulises',
+        phone: '619-721-2947',
+        address: '404 Sycamore Rd. Apt. 2'
       },
     ];
 
@@ -38,11 +43,15 @@ async function seedUsers() {
         defaults: user,
       });
 
-      console.log(
-        created
-          ? `✅ Created user ${user.email}`
-          : `ℹ️ User ${user.email} already exists`
-      );
+      if (created) {
+        console.log(`✅ Created user ${user.email}`);
+      } else {
+        record.password = user.password;
+        record.role = user.role;
+        record.name = user.name;
+        await record.save();
+        console.log(`🔄 Updated existing user ${user.email}`);
+      }
     }
 
     console.log('✅ User seeding complete');
