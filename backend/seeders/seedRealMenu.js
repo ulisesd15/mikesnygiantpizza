@@ -116,7 +116,7 @@ const items = [
 async function seed() {
   try {
     console.log('🌱 Connecting to database...');
-    await sequelize.sync({ alter: true }); 
+    await MenuItem.sync({ alter: true }); 
     
     const count = await MenuItem.count();
     if (count > 0) {
