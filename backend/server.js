@@ -36,6 +36,8 @@ app.use((req, res, next) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/menu', require('./routes/menu'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/orders', require('./routes/orders'));
+app.use('/api/analytics', require('./routes/analytics'));
 
 // Your existing routes 👇
 app.get('/', (req, res) => {
