@@ -1,4 +1,4 @@
-// backend/models/orderItem.js
+// backend/models/OrderItem.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -55,5 +55,20 @@ const OrderItem = sequelize.define('OrderItem', {
 }, {
   timestamps: false // No need for timestamps on order items
 });
+
+// ✅ ASSOCIATIONS
+OrderItem.associate = (models) => {
+  // OrderItem belongs to Order
+  OrderItem.belongsTo(models.Order, {
+    foreignKey: 'orderId',
+    as: 'Order'
+  });
+
+  // OrderItem belongs to MenuItem
+  OrderItem.belongsTo(models.MenuItem, {
+    foreignKey: 'menuItemId',
+    as: 'MenuItem'
+  });
+};
 
 module.exports = OrderItem;

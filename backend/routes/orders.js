@@ -1,18 +1,20 @@
 // backend/routes/orders.js
 const express = require('express');
 const router = express.Router();
-const { Order, OrderItem, User, MenuItem } = require('../models');
+const { Order, OrderItem, User, MenuItem, sequelize } = require('../models');
 const { authenticate, optionalAuth, adminAuth } = require('../middleware/auth');
 const { Op } = require('sequelize');
 
 // ========================================
 // CREATE ORDER
 // ========================================
-// POST /api/orders - Create a new order (works for both logged-in and guest users)
+// POST /api/orders - Create new order
 router.post('/', optionalAuth, async (req, res) => {
-  const transaction = await Order.sequelize.transaction();
+  let transaction;
   
   try {
+    transaction = await sequelize.transaction();
+    
     const {
       orderType,
       customerName,
@@ -30,6 +32,14 @@ router.post('/', optionalAuth, async (req, res) => {
     } = req.body;
 
     // Validation
+    if (!customerName || !customerEmail || !customerPhone) {
+      await transaction.rollback();
+      return res.status(400).json({ 
+        success: false,
+        error: 'Customer name, email, and phone are required' 
+      });
+    }
+
     if (!items || items.length === 0) {
       await transaction.rollback();
       return res.status(400).json({ 
@@ -73,12 +83,19 @@ router.post('/', optionalAuth, async (req, res) => {
       }
     }
 
+    // Generate order number
+    const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
     // Create order
     const orderData = {
+      orderNumber,
       userId: req.user ? req.user.id : null,
+      customerName,
+      customerEmail,
+      customerPhone,
       orderType,
       deliveryAddress: orderType === 'delivery' ? deliveryAddress : null,
-      deliveryInstructions,
+      deliveryInstructions: deliveryInstructions || null,
       paymentMethod: paymentMethod || 'cash',
       paymentStatus: 'pending',
       status: 'pending',
@@ -88,13 +105,6 @@ router.post('/', optionalAuth, async (req, res) => {
       total,
       estimatedTime: estimatedTime || 35
     };
-
-    // Add guest info if not logged in
-    if (!req.user) {
-      orderData.guestName = customerName;
-      orderData.guestEmail = customerEmail;
-      orderData.guestPhone = customerPhone;
-    }
 
     const order = await Order.create(orderData, { transaction });
 
@@ -111,28 +121,48 @@ router.post('/', optionalAuth, async (req, res) => {
 
     await OrderItem.bulkCreate(orderItems, { transaction });
 
+    // ✅ COMMIT TRANSACTION
     await transaction.commit();
 
-    // Fetch complete order with items
+    // ✅ FETCH COMPLETE ORDER AFTER COMMIT
     const createdOrder = await Order.findByPk(order.id, {
-      include: [{ model: OrderItem }]
+      include: [
+        {
+          model: OrderItem,
+          as: 'OrderItems'
+        },
+        {
+          model: User,
+          as: 'User',
+          attributes: ['id', 'name', 'email', 'phone']
+        }
+      ]
     });
 
-    res.status(201).json({
+    console.log('✅ Order created:', createdOrder.orderNumber);
+
+    // ✅ RETURN SUCCESS - DON'T ROLLBACK HERE
+    return res.status(201).json({
       success: true,
       message: 'Order created successfully',
       order: createdOrder
     });
 
   } catch (error) {
-    await transaction.rollback();
+    // ✅ ONLY ROLLBACK IF TRANSACTION EXISTS AND ISN'T FINISHED
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
+    
     console.error('Error creating order:', error);
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false,
-      error: 'Failed to create order' 
+      error: 'Failed to create order',
+      details: error.message
     });
   }
 });
+
 
 // ========================================
 // GET USER'S ORDERS
@@ -179,6 +209,40 @@ router.get('/my-orders', authenticate, async (req, res) => {
     });
   }
 });
+// ========================================
+// GET USER'S ORDERS
+// ========================================
+// GET /api/orders/user - Get logged-in user's orders
+router.get('/user', authenticate, async (req, res) => {
+  try {
+    const orders = await Order.findAll({
+      where: { userId: req.user.id },
+      include: [
+        {
+          model: OrderItem,
+          as: 'OrderItems'
+        },
+        {
+          model: User,
+          as: 'User',
+          attributes: ['id', 'name', 'email', 'phone']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: { orders }
+    });
+  } catch (error) {
+    console.error('Error fetching user orders:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch orders' 
+    });
+  }
+});
 
 // Alias for backwards compatibility
 router.get('/', authenticate, async (req, res) => {
@@ -189,18 +253,21 @@ router.get('/', authenticate, async (req, res) => {
 // ========================================
 // GET SINGLE ORDER
 // ========================================
-// GET /api/orders/:id - Get specific order details
-router.get('/:id', optionalAuth, async (req, res) => {
+// GET /api/orders/:id - Get single order by ID
+router.get('/:id', authenticate, async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id, {
-      include: [{
-        model: OrderItem,
-        include: [{ model: MenuItem }]
-      }, {
-        model: User,
-        attributes: ['id', 'name', 'email', 'phone'],
-        required: false
-      }]
+      include: [
+        {
+          model: OrderItem,
+          as: 'OrderItems'
+        },
+        {
+          model: User,
+          as: 'User',
+          attributes: ['id', 'name', 'email', 'phone']
+        }
+      ]
     });
 
     if (!order) {
@@ -210,19 +277,17 @@ router.get('/:id', optionalAuth, async (req, res) => {
       });
     }
 
-    // Check permissions
-    if (req.user) {
-      if (order.userId !== req.user.id && req.user.role !== 'admin') {
-        return res.status(403).json({ 
-          success: false,
-          error: 'Access denied' 
-        });
-      }
+    // Check if user owns this order (unless admin)
+    if (req.user.role !== 'admin' && order.userId !== req.user.id) {
+      return res.status(403).json({ 
+        success: false,
+        error: 'Access denied' 
+      });
     }
 
-    res.json({ 
+    res.json({
       success: true,
-      order 
+      order
     });
   } catch (error) {
     console.error('Error fetching order:', error);
@@ -234,93 +299,36 @@ router.get('/:id', optionalAuth, async (req, res) => {
 });
 
 // ========================================
-// ADMIN ROUTES
+// ADMIN: GET ALL ORDERS
 // ========================================
-
-// GET /api/orders/admin/all - Get all orders with filters (admin only)
-router.get('/admin/all', authenticate, adminAuth, async (req, res) => {
+// GET /api/orders/admin/all - Get all orders (admin only)
+router.get('/admin/all', adminAuth, async (req, res) => {
   try {
-    const { 
-      status, 
-      page = 1, 
-      limit = 20,
-      startDate,
-      endDate,
-      orderType,
-      search
-    } = req.query;
+    const { status, limit = 50, offset = 0 } = req.query;
 
-    const offset = (page - 1) * limit;
-    const whereClause = {};
+    const whereClause = status ? { status } : {};
 
-    // Filter by status
-    if (status && status !== 'all') {
-      whereClause.status = status;
-    }
-
-    // Filter by order type
-    if (orderType) {
-      whereClause.orderType = orderType;
-    }
-
-    // Filter by date range
-    if (startDate || endDate) {
-      whereClause.createdAt = {};
-      if (startDate) {
-        whereClause.createdAt[Op.gte] = new Date(startDate);
-      }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        whereClause.createdAt[Op.lte] = end;
-      }
-    }
-
-    // Search functionality
-    const include = [{
-      model: OrderItem,
-      include: [{ model: MenuItem }]
-    }];
-
-    if (search) {
-      include.push({
-        model: User,
-        attributes: ['id', 'name', 'email', 'phone'],
-        where: {
-          [Op.or]: [
-            { name: { [Op.like]: `%${search}%` } },
-            { email: { [Op.like]: `%${search}%` } }
-          ]
-        },
-        required: false
-      });
-    } else {
-      include.push({
-        model: User,
-        attributes: ['id', 'name', 'email', 'phone'],
-        required: false
-      });
-    }
-
-    const { count, rows: orders } = await Order.findAndCountAll({
+    const orders = await Order.findAll({
       where: whereClause,
-      include,
+      include: [
+        {
+          model: OrderItem,
+          as: 'OrderItems'
+        },
+        {
+          model: User,
+          as: 'User',
+          attributes: ['id', 'name', 'email', 'phone']
+        }
+      ],
       order: [['createdAt', 'DESC']],
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
 
-    res.json({ 
+    res.json({
       success: true,
-      data: {
-        orders,
-        pagination: {
-          total: count,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(count / limit)
-        }
-      }
+      data: { orders }
     });
   } catch (error) {
     console.error('Error fetching all orders:', error);
@@ -386,27 +394,23 @@ router.get('/customer/:userId', authenticate, adminAuth, async (req, res) => {
   }
 });
 
+// ========================================
+// ADMIN: UPDATE ORDER STATUS
+// ========================================
 // PATCH /api/orders/:id/status - Update order status (admin only)
-router.patch('/:id/status', authenticate, adminAuth, async (req, res) => {
+router.patch('/:id/status', adminAuth, async (req, res) => {
   try {
     const { status } = req.body;
-    const validStatuses = ['pending', 'accepted', 'preparing', 'ready', 'completed', 'cancelled'];
 
+    const validStatuses = ['pending', 'accepted', 'preparing', 'ready', 'completed', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ 
         success: false,
-        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` 
+        error: 'Invalid status' 
       });
     }
 
-    const order = await Order.findByPk(req.params.id, {
-      include: [{
-        model: User,
-        attributes: ['id', 'name', 'email'],
-        required: false
-      }]
-    });
-
+    const order = await Order.findByPk(req.params.id);
     if (!order) {
       return res.status(404).json({ 
         success: false,
@@ -414,49 +418,25 @@ router.patch('/:id/status', authenticate, adminAuth, async (req, res) => {
       });
     }
 
-    // Prevent status changes on completed/cancelled orders
-    if (order.status === 'cancelled' && status !== 'cancelled') {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Cannot change status of a cancelled order' 
-      });
-    }
-
-    if (order.status === 'completed' && status !== 'completed') {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Cannot change status of a completed order' 
-      });
-    }
-
     order.status = status;
     await order.save();
 
-    // Fetch updated order with all details
-    const updatedOrder = await Order.findByPk(order.id, {
-      include: [{
-        model: OrderItem,
-        include: [{ model: MenuItem }]
-      }, {
-        model: User,
-        attributes: ['id', 'name', 'email', 'phone'],
-        required: false
-      }]
-    });
+    console.log(`✅ Order #${order.id} status updated to: ${status}`);
 
-    res.json({ 
+    res.json({
       success: true,
-      message: `Order status updated to ${status}`,
-      order: updatedOrder
+      message: 'Order status updated',
+      order
     });
   } catch (error) {
     console.error('Error updating order status:', error);
     res.status(500).json({ 
       success: false,
-      error: 'Failed to update order' 
+      error: 'Failed to update order status' 
     });
   }
 });
+
 
 // PATCH /api/orders/:id/accept - Accept a pending order
 router.patch('/:id/accept', authenticate, adminAuth, async (req, res) => {
