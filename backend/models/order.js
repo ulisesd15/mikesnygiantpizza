@@ -1,4 +1,4 @@
-// backend/models/order.js
+// backend/models/Order.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -9,25 +9,35 @@ const Order = sequelize.define('Order', {
     autoIncrement: true 
   },
   
+  // User ID (optional - for logged-in users)
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'Users',
+      key: 'id'
+    }
+  },
+  
   // Order identification
   orderNumber: {
-    type: DataTypes.STRING(20),
+    type: DataTypes.STRING(30),
     unique: true,
     allowNull: false
   },
   
-  // Guest customer info (for non-logged-in users)
-  guestName: {
+  // ✅ CHANGED: Use customerName instead of guestName (works for both guests and logged-in users)
+  customerName: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: false
   },
-  guestEmail: {
+  customerEmail: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: false
   },
-  guestPhone: {
+  customerPhone: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: false
   },
   
   // Order type and delivery info
@@ -99,5 +109,20 @@ const Order = sequelize.define('Order', {
   }
 });
 
+// ✅ ASSOCIATIONS
+Order.associate = (models) => {
+  // Order belongs to User (optional - can be null for guest orders)
+  Order.belongsTo(models.User, {
+    foreignKey: 'userId',
+    as: 'User'
+  });
+
+  // Order has many OrderItems
+  Order.hasMany(models.OrderItem, {
+    foreignKey: 'orderId',
+    as: 'OrderItems',
+    onDelete: 'CASCADE'
+  });
+};
 
 module.exports = Order;

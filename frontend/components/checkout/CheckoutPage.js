@@ -305,6 +305,8 @@ export function initCheckout() {
   if (window.currentUser) {
     checkoutData.customerName = window.currentUser.name || window.currentUser.email.split('@')[0];
     checkoutData.customerEmail = window.currentUser.email || '';
+    checkoutData.customerPhone = window.currentUser.phone || '';
+    checkoutData.deliveryAddress = window.currentUser.address || '';
   }
 
   // Global functions
@@ -334,6 +336,7 @@ export function initCheckout() {
 
   window.updateCheckoutField = (field, value) => {
     checkoutData[field] = value;
+    console.log(`Updated ${field}:`, value);
   };
 
   window.placeOrder = async () => {
@@ -381,61 +384,69 @@ export function initCheckout() {
       const deliveryFee = checkoutData.orderType === 'delivery' ? 3.99 : 0;
       const total = subtotal + tax + deliveryFee;
 
+      // ✅ BUILD ORDER DATA WITH CUSTOMER INFO
       const orderData = {
-        userId: window.currentUser?.id || null, // 👉 Tie order to user!
-        ...checkoutData,
+        orderType: checkoutData.orderType,
+        customerName: checkoutData.customerName.trim(),      // ✅ Send this
+        customerEmail: checkoutData.customerEmail.trim(),    // ✅ Send this
+        customerPhone: checkoutData.customerPhone.trim(),    // ✅ Send this
+        deliveryAddress: checkoutData.orderType === 'delivery' ? checkoutData.deliveryAddress.trim() : null,
+        deliveryInstructions: checkoutData.deliveryInstructions.trim() || null,
+        paymentMethod: checkoutData.paymentMethod,
         items: cart.map(item => ({
           menuItemId: item.id,
           name: item.name,
           size: item.size || null,
           price: item.price,
-          quantity: item.quantity
+          quantity: item.quantity,
+          specialInstructions: item.specialInstructions || null
         })),
         subtotal: parseFloat(subtotal.toFixed(2)),
         tax: parseFloat(tax.toFixed(2)),
         deliveryFee: parseFloat(deliveryFee.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
-        status: 'pending',
         estimatedTime: 35
       };
 
-      console.log('Order data:', orderData);
+      console.log('📤 Sending order to backend:', orderData);
 
-      // TODO: Send to backend API
-      // const response = await fetch('/api/orders', {
-      //   method: 'POST',
-      //   headers: { 
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${localStorage.getItem('token')}`
-      //   },
-      //   body: JSON.stringify(orderData)
-      // });
-      // const order = await response.json();
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock order response
-      const mockOrder = {
-        id: Date.now(),
-        orderNumber: `ORD-${Math.floor(Math.random() * 10000)}`,
-        ...orderData,
-        createdAt: new Date().toISOString()
+      // ✅ SEND TO BACKEND API
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json'
       };
+      
+      // Add auth token if user is logged in
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
-      // 👉 Save order to localStorage (temporary until backend is ready)
-      saveOrderToLocalStorage(mockOrder);
+      const response = await fetch('http://localhost:5001/api/orders', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(orderData)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to place order');
+      }
+
+      const result = await response.json();
+      const order = result.order || result.data;
+
+      console.log('✅ Order created successfully:', order);
 
       // Clear cart
       clearCart();
 
-      // Navigate to order confirmation
-      console.log('✅ Order placed successfully!');
-      window.showOrderConfirmation(mockOrder);
+      // Show confirmation
+      window.showOrderConfirmation(order);
 
     } catch (error) {
       console.error('❌ Order failed:', error);
-      alert('❌ Failed to place order. Please try again.');
+      alert(`❌ Failed to place order: ${error.message}\n\nPlease check that the backend is running and try again.`);
+      
       if (btn) {
         btn.disabled = false;
         btn.textContent = `📦 Place Order`;
@@ -444,50 +455,4 @@ export function initCheckout() {
   };
 
   console.log('✅ Checkout initialized');
-}
-
-// 👇 Helper functions to manage orders in localStorage
-function saveOrderToLocalStorage(order) {
-  try {
-    // Get all orders
-    const allOrders = JSON.parse(localStorage.getItem('userOrders')) || [];
-    
-    // Add new order
-    allOrders.push(order);
-    
-    // Save back
-    localStorage.setItem('userOrders', JSON.stringify(allOrders));
-    
-    console.log('✅ Order saved to localStorage:', order.id);
-  } catch (error) {
-    console.error('❌ Failed to save order:', error);
-  }
-}
-
-// Export for use in ordersTab
-export function getUserOrders(userId) {
-  try {
-    const allOrders = JSON.parse(localStorage.getItem('userOrders')) || [];
-    
-    // If userId provided, filter by that user
-    // If null (guest), show all guest orders
-    if (userId) {
-      return allOrders.filter(order => order.userId === userId);
-    } else {
-      return allOrders.filter(order => !order.userId);
-    }
-  } catch (error) {
-    console.error('❌ Failed to load orders:', error);
-    return [];
-  }
-}
-
-// Export for use in admin panel
-export function getAllOrders() {
-  try {
-    return JSON.parse(localStorage.getItem('userOrders')) || [];
-  } catch (error) {
-    console.error('❌ Failed to load all orders:', error);
-    return [];
-  }
 }

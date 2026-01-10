@@ -1,5 +1,5 @@
 // ordersTab.js - User orders with localStorage integration
-import { getUserOrders } from './checkout/CheckoutPage.js';
+
 
 export function renderOrdersTab() {
   return `

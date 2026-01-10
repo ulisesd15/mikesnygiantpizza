@@ -33,7 +33,7 @@ export function renderOrdersPanel() {
         <button 
           onclick="window.switchOrderTab('new')" 
           class="order-tab ${currentOrderTab === 'new' ? 'active' : ''}"
-          style="padding: 1rem 2rem; background: ${currentOrderTab === 'new' ? '#ff6b35' : 'transparent'}; color: ${currentOrderTab === 'new' ? 'white' : '#666'}; border: none; border-bottom: 3px solid ${currentOrderTab === 'new' ? '#ff6b35' : 'transparent'}; cursor: pointer; font-weight: 600; position: relative;"
+          style="padding: 1rem 2rem; background: ${currentOrderTab === 'new' ? '#ff6b35' : 'transparent'}; color: ${currentOrderTab === 'new' ? 'white' : '#666'}; border: none; border-bottom: 3px solid ${currentOrderTab === 'new' ? '#ff6b35' : 'transparent'}; cursor: pointer; font-weight: 600; transition: all 0.3s; position: relative;"
         >
           🆕 New Orders
           ${newOrders.length > 0 ? `<span class="badge">${newOrders.length}</span>` : ''}
@@ -41,14 +41,14 @@ export function renderOrdersPanel() {
         <button 
           onclick="window.switchOrderTab('progress')" 
           class="order-tab ${currentOrderTab === 'progress' ? 'active' : ''}"
-          style="padding: 1rem 2rem; background: ${currentOrderTab === 'progress' ? '#007bff' : 'transparent'}; color: ${currentOrderTab === 'progress' ? 'white' : '#666'}; border: none; border-bottom: 3px solid ${currentOrderTab === 'progress' ? '#007bff' : 'transparent'}; cursor: pointer; font-weight: 600;"
+          style="padding: 1rem 2rem; background: ${currentOrderTab === 'progress' ? '#007bff' : 'transparent'}; color: ${currentOrderTab === 'progress' ? 'white' : '#666'}; border: none; border-bottom: 3px solid ${currentOrderTab === 'progress' ? '#007bff' : 'transparent'}; cursor: pointer; font-weight: 600; transition: all 0.3s;"
         >
           🍳 In Progress (${inProgressOrders.length})
         </button>
         <button 
           onclick="window.switchOrderTab('completed')" 
           class="order-tab ${currentOrderTab === 'completed' ? 'active' : ''}"
-          style="padding: 1rem 2rem; background: ${currentOrderTab === 'completed' ? '#28a745' : 'transparent'}; color: ${currentOrderTab === 'completed' ? 'white' : '#666'}; border: none; border-bottom: 3px solid ${currentOrderTab === 'completed' ? '#28a745' : 'transparent'}; cursor: pointer; font-weight: 600;"
+          style="padding: 1rem 2rem; background: ${currentOrderTab === 'completed' ? '#28a745' : 'transparent'}; color: ${currentOrderTab === 'completed' ? 'white' : '#666'}; border: none; border-bottom: 3px solid ${currentOrderTab === 'completed' ? '#28a745' : 'transparent'}; cursor: pointer; font-weight: 600; transition: all 0.3s;"
         >
           ✅ Completed (${completedOrders.length})
         </button>
@@ -63,6 +63,9 @@ export function renderOrdersPanel() {
     </div>
 
     <style>
+      .order-tab:hover {
+        opacity: 0.8;
+      }
       .badge {
         position: absolute;
         top: 0.5rem;
@@ -115,71 +118,80 @@ function renderNewOrders(orders) {
     `;
   }
 
-  return orders.map(order => `
-    <div class="order-card new">
-      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 300px; gap: 2rem;">
-        <!-- Order Info -->
-        <div>
-          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
-            <h3 style="margin: 0; color: #ff6b35; font-size: 1.3rem;">${order.orderNumber}</h3>
-            <span style="background: #ff6b35; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">NEW</span>
-          </div>
-          <div style="font-size: 0.9rem; color: #666; line-height: 1.8;">
-            <div><strong>🕒 Time:</strong> ${formatTime(order.createdAt)}</div>
-            <div><strong>🚚 Type:</strong> <span style="text-transform: capitalize;">${order.orderType}</span></div>
-            <div><strong>💵 Payment:</strong> <span style="text-transform: capitalize;">${order.paymentMethod}</span></div>
-          </div>
-        </div>
+  return orders.map(order => {
+    // Get customer info - handle both logged-in users and guest orders
+    const customerName = order.User?.name || order.customerName || 'Guest Customer';
+    const customerPhone = order.User?.phone || order.customerPhone || 'N/A';
+    const customerEmail = order.User?.email || order.customerEmail || 'N/A';
 
-        <!-- Customer Info -->
-        <div>
-          <h4 style="margin: 0 0 0.75rem; color: #333;">👤 Customer</h4>
-          <div style="font-size: 0.9rem; color: #666; line-height: 1.8;">
-            <div><strong>Name:</strong> ${order.customerName}</div>
-            <div><strong>Phone:</strong> ${order.customerPhone}</div>
-            ${order.orderType === 'delivery' ? `<div><strong>📍 Address:</strong> ${order.deliveryAddress}</div>` : ''}
+    return `
+      <div class="order-card new">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 300px; gap: 2rem;">
+          <!-- Order Info -->
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+              <h3 style="margin: 0; color: #ff6b35; font-size: 1.3rem;">Order #${order.id}</h3>
+              <span style="background: #ff6b35; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">NEW</span>
+            </div>
+            <div style="font-size: 0.9rem; color: #666; line-height: 1.8;">
+              <div><strong>🕒 Time:</strong> ${formatTime(order.createdAt)}</div>
+              <div><strong>🚚 Type:</strong> <span style="text-transform: capitalize;">${order.orderType}</span></div>
+              <div><strong>💵 Payment:</strong> <span style="text-transform: capitalize;">${order.paymentMethod || 'cash'}</span></div>
+            </div>
           </div>
-        </div>
 
-        <!-- Order Items -->
-        <div>
-          <h4 style="margin: 0 0 0.75rem; color: #333;">🍕 Items</h4>
-          <div style="max-height: 120px; overflow-y: auto; font-size: 0.9rem;">
-            ${order.items.map(item => `
-              <div style="padding: 0.25rem 0; color: #666;">
-                <strong>${item.quantity}x</strong> ${item.name} ${item.size ? `(${item.size})` : ''}
-              </div>
-            `).join('')}
+          <!-- Customer Info -->
+          <div>
+            <h4 style="margin: 0 0 0.75rem; color: #333;">👤 Customer</h4>
+            <div style="font-size: 0.9rem; color: #666; line-height: 1.8;">
+              <div><strong>Name:</strong> ${customerName}</div>
+              <div><strong>Phone:</strong> ${customerPhone}</div>
+              <div><strong>Email:</strong> ${customerEmail}</div>
+              ${order.orderType === 'delivery' && order.deliveryAddress ? `<div style="margin-top: 0.5rem;"><strong>📍 Address:</strong><br>${order.deliveryAddress}</div>` : ''}
+              ${order.deliveryInstructions ? `<div style="margin-top: 0.5rem;"><strong>📝 Notes:</strong> ${order.deliveryInstructions}</div>` : ''}
+            </div>
           </div>
-          <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 2px solid #ddd; font-size: 1.3rem; font-weight: bold; color: #28a745;">
-            Total: $${order.total}
-          </div>
-        </div>
 
-        <!-- Actions -->
-        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-          <button 
-            onclick="window.acceptOrder('${order.id}')" 
-            style="width: 100%; padding: 0.75rem; background: #28a745; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 1rem;"
-          >
-            ✅ Accept Order
-          </button>
-          <button 
-            onclick="window.rejectOrder('${order.id}')" 
-            style="width: 100%; padding: 0.75rem; background: #dc3545; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;"
-          >
-            ❌ Reject Order
-          </button>
-          <button 
-            onclick="window.printOrder('${order.id}')" 
-            style="width: 100%; padding: 0.75rem; background: #6c757d; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;"
-          >
-            🖨️ Print
-          </button>
+          <!-- Order Items -->
+          <div>
+            <h4 style="margin: 0 0 0.75rem; color: #333;">🍕 Items</h4>
+            <div style="max-height: 120px; overflow-y: auto; font-size: 0.9rem;">
+              ${(order.OrderItems || order.items || []).map(item => `
+                <div style="padding: 0.25rem 0; color: #666;">
+                  <strong>${item.quantity}x</strong> ${item.name} ${item.size ? `(${item.size})` : ''}
+                </div>
+              `).join('')}
+            </div>
+            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 2px solid #ddd; font-size: 1.3rem; font-weight: bold; color: #28a745;">
+              Total: $${parseFloat(order.total || 0).toFixed(2)}
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <button 
+              onclick="window.acceptOrder(${order.id})" 
+              style="width: 100%; padding: 0.75rem; background: #28a745; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 1rem;"
+            >
+              ✅ Accept Order
+            </button>
+            <button 
+              onclick="window.rejectOrder(${order.id})" 
+              style="width: 100%; padding: 0.75rem; background: #dc3545; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;"
+            >
+              ❌ Reject Order
+            </button>
+            <button 
+              onclick="window.printOrder(${order.id})" 
+              style="width: 100%; padding: 0.75rem; background: #6c757d; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;"
+            >
+              🖨️ Print
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function renderInProgressOrders(orders) {
@@ -192,54 +204,60 @@ function renderInProgressOrders(orders) {
     `;
   }
 
-  return orders.map(order => `
-    <div class="order-card progress">
-      <div style="display: grid; grid-template-columns: 1fr 1fr 300px; gap: 2rem;">
-        <!-- Order Info -->
-        <div>
-          <h3 style="margin: 0 0 1rem; color: #007bff; font-size: 1.3rem;">${order.orderNumber}</h3>
-          <div style="font-size: 0.9rem; color: #666; line-height: 1.8;">
-            <div><strong>👤 Customer:</strong> ${order.customerName}</div>
-            <div><strong>📞 Phone:</strong> ${order.customerPhone}</div>
-            <div><strong>🚚 Type:</strong> <span style="text-transform: capitalize;">${order.orderType}</span></div>
-            ${order.orderType === 'delivery' ? `<div><strong>📍:</strong> ${order.deliveryAddress}</div>` : ''}
-          </div>
-        </div>
+  return orders.map(order => {
+    const customerName = order.User?.name || order.customerName || 'Guest Customer';
+    const customerPhone = order.User?.phone || order.customerPhone || 'N/A';
 
-        <!-- Order Items -->
-        <div>
-          <h4 style="margin: 0 0 0.75rem; color: #333;">🍕 Items (Total: $${order.total})</h4>
-          <div style="max-height: 140px; overflow-y: auto; font-size: 0.9rem;">
-            ${order.items.map(item => `
-              <div style="padding: 0.25rem 0; color: #666;">
-                <strong>${item.quantity}x</strong> ${item.name} ${item.size ? `(${item.size})` : ''}
-              </div>
-            `).join('')}
+    return `
+      <div class="order-card progress">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 300px; gap: 2rem;">
+          <!-- Order Info -->
+          <div>
+            <h3 style="margin: 0 0 1rem; color: #007bff; font-size: 1.3rem;">Order #${order.id}</h3>
+            <div style="font-size: 0.9rem; color: #666; line-height: 1.8;">
+              <div><strong>👤 Customer:</strong> ${customerName}</div>
+              <div><strong>📞 Phone:</strong> ${customerPhone}</div>
+              <div><strong>🚚 Type:</strong> <span style="text-transform: capitalize;">${order.orderType}</span></div>
+              ${order.orderType === 'delivery' && order.deliveryAddress ? `<div><strong>📍:</strong> ${order.deliveryAddress}</div>` : ''}
+              <div style="margin-top: 0.5rem;"><strong>Status:</strong> <span style="text-transform: uppercase; color: #007bff; font-weight: 600;">${order.status}</span></div>
+            </div>
           </div>
-        </div>
 
-        <!-- Status Update -->
-        <div>
-          <h4 style="margin: 0 0 0.75rem; color: #333;">Update Status</h4>
-          <select 
-            onchange="window.updateOrderStatus('${order.id}', this.value)" 
-            style="width: 100%; padding: 0.75rem; border: 2px solid #007bff; border-radius: 6px; font-size: 1rem; margin-bottom: 0.75rem;"
-          >
-            <option value="accepted" ${order.status === 'accepted' ? 'selected' : ''}>Accepted</option>
-            <option value="preparing" ${order.status === 'preparing' ? 'selected' : ''}>Preparing</option>
-            <option value="ready" ${order.status === 'ready' ? 'selected' : ''}>${order.orderType === 'delivery' ? 'Out for Delivery' : 'Ready for Pickup'}</option>
-            <option value="completed">Mark as Completed</option>
-          </select>
-          <button 
-            onclick="window.printOrder('${order.id}')" 
-            style="width: 100%; padding: 0.75rem; background: #6c757d; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;"
-          >
-            🖨️ Print Receipt
-          </button>
+          <!-- Order Items -->
+          <div>
+            <h4 style="margin: 0 0 0.75rem; color: #333;">🍕 Items (Total: $${parseFloat(order.total || 0).toFixed(2)})</h4>
+            <div style="max-height: 140px; overflow-y: auto; font-size: 0.9rem;">
+              ${(order.OrderItems || order.items || []).map(item => `
+                <div style="padding: 0.25rem 0; color: #666;">
+                  <strong>${item.quantity}x</strong> ${item.name} ${item.size ? `(${item.size})` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Status Update -->
+          <div>
+            <h4 style="margin: 0 0 0.75rem; color: #333;">Update Status</h4>
+            <select 
+              onchange="window.updateOrderStatus(${order.id}, this.value)" 
+              style="width: 100%; padding: 0.75rem; border: 2px solid #007bff; border-radius: 6px; font-size: 1rem; margin-bottom: 0.75rem;"
+            >
+              <option value="accepted" ${order.status === 'accepted' ? 'selected' : ''}>Accepted</option>
+              <option value="preparing" ${order.status === 'preparing' ? 'selected' : ''}>Preparing</option>
+              <option value="ready" ${order.status === 'ready' ? 'selected' : ''}>${order.orderType === 'delivery' ? 'Out for Delivery' : 'Ready for Pickup'}</option>
+              <option value="completed">Mark as Completed</option>
+            </select>
+            <button 
+              onclick="window.printOrder(${order.id})" 
+              style="width: 100%; padding: 0.75rem; background: #6c757d; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;"
+            >
+              🖨️ Print Receipt
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function renderCompletedOrders(orders) {
@@ -255,23 +273,28 @@ function renderCompletedOrders(orders) {
   // Show only last 20 completed orders
   const recentOrders = orders.slice(-20).reverse();
 
-  return recentOrders.map(order => `
-    <div class="order-card completed">
-      <div style="display: grid; grid-template-columns: 200px 1fr 200px; gap: 2rem; align-items: center;">
-        <div>
-          <h4 style="margin: 0; color: #28a745;">${order.orderNumber}</h4>
-          <div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">${formatTime(order.createdAt)}</div>
-        </div>
-        <div style="font-size: 0.9rem; color: #666;">
-          <strong>${order.customerName}</strong> • ${order.orderType} • ${order.items.length} items
-        </div>
-        <div style="text-align: right;">
-          <div style="font-size: 1.2rem; font-weight: bold; color: #28a745;">$${order.total}</div>
-          <button onclick="window.viewOrderDetails('${order.id}')" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">View Details</button>
+  return recentOrders.map(order => {
+    const customerName = order.User?.name || order.customerName || 'Guest Customer';
+    const itemCount = (order.OrderItems || order.items || []).length;
+
+    return `
+      <div class="order-card completed">
+        <div style="display: grid; grid-template-columns: 200px 1fr 200px; gap: 2rem; align-items: center;">
+          <div>
+            <h4 style="margin: 0; color: #28a745;">Order #${order.id}</h4>
+            <div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">${formatTime(order.createdAt)}</div>
+          </div>
+          <div style="font-size: 0.9rem; color: #666;">
+            <strong>${customerName}</strong> • ${order.orderType} • ${itemCount} items
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 1.2rem; font-weight: bold; color: #28a745;">$${parseFloat(order.total || 0).toFixed(2)}</div>
+            <button onclick="window.viewOrderDetails(${order.id})" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">View Details</button>
+          </div>
         </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function formatTime(timestamp) {
@@ -279,78 +302,205 @@ function formatTime(timestamp) {
   return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function initOrdersPanel() {
+export async function initOrdersPanel() {
   console.log('📝 Initializing orders panel...');
 
-  // Load mock orders for testing
-  loadMockOrders();
+  // Load orders from backend
+  await loadOrdersFromBackend();
 
-  // Auto-refresh every 10 seconds
+  // Auto-refresh every 15 seconds
   startAutoRefresh();
 
   // Global functions
   window.switchOrderTab = (tab) => {
     currentOrderTab = tab;
-    document.getElementById('admin-panel').innerHTML = renderOrdersPanel();
+    const adminPanel = document.getElementById('admin-panel');
+    if (adminPanel) {
+      adminPanel.innerHTML = renderOrdersPanel();
+    }
   };
 
   window.refreshOrders = async () => {
     console.log('🔄 Refreshing orders...');
-    // TODO: Fetch from API
-    // const response = await fetch('/api/orders/pending');
-    // orders = await response.json();
-    loadMockOrders();
-    document.getElementById('admin-panel').innerHTML = renderOrdersPanel();
+    await loadOrdersFromBackend();
+    const adminPanel = document.getElementById('admin-panel');
+    if (adminPanel) {
+      adminPanel.innerHTML = renderOrdersPanel();
+    }
   };
 
   window.acceptOrder = async (orderId) => {
     if (!confirm('Accept this order?')) return;
     console.log('✅ Accepting order:', orderId);
-    // TODO: API call
-    const order = orders.find(o => o.id === orderId);
-    if (order) {
-      order.status = 'accepted';
-      document.getElementById('admin-panel').innerHTML = renderOrdersPanel();
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'accepted' })
+      });
+
+      if (response.ok) {
+        await loadOrdersFromBackend();
+        const adminPanel = document.getElementById('admin-panel');
+        if (adminPanel) {
+          adminPanel.innerHTML = renderOrdersPanel();
+        }
+        alert('✅ Order accepted!');
+      } else {
+        throw new Error('Failed to accept order');
+      }
+    } catch (error) {
+      console.error('Error accepting order:', error);
+      alert('❌ Failed to accept order. Please try again.');
     }
   };
 
   window.rejectOrder = async (orderId) => {
     if (!confirm('Reject this order? This cannot be undone.')) return;
     console.log('❌ Rejecting order:', orderId);
-    // TODO: API call
-    orders = orders.filter(o => o.id !== orderId);
-    document.getElementById('admin-panel').innerHTML = renderOrdersPanel();
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'cancelled' })
+      });
+
+      if (response.ok) {
+        await loadOrdersFromBackend();
+        const adminPanel = document.getElementById('admin-panel');
+        if (adminPanel) {
+          adminPanel.innerHTML = renderOrdersPanel();
+        }
+        alert('❌ Order rejected');
+      } else {
+        throw new Error('Failed to reject order');
+      }
+    } catch (error) {
+      console.error('Error rejecting order:', error);
+      alert('❌ Failed to reject order. Please try again.');
+    }
   };
 
   window.updateOrderStatus = async (orderId, newStatus) => {
     console.log('🔄 Updating order status:', orderId, newStatus);
-    // TODO: API call
-    const order = orders.find(o => o.id === orderId);
-    if (order) {
-      order.status = newStatus;
-      document.getElementById('admin-panel').innerHTML = renderOrdersPanel();
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (response.ok) {
+        await loadOrdersFromBackend();
+        const adminPanel = document.getElementById('admin-panel');
+        if (adminPanel) {
+          adminPanel.innerHTML = renderOrdersPanel();
+        }
+      } else {
+        throw new Error('Failed to update status');
+      }
+    } catch (error) {
+      console.error('Error updating order:', error);
+      alert('❌ Failed to update order status. Please try again.');
     }
   };
 
   window.printOrder = (orderId) => {
     console.log('🖨️ Printing order:', orderId);
-    alert('Print functionality coming soon!');
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      // Create a simple print view
+      const printWindow = window.open('', '', 'height=600,width=800');
+      printWindow.document.write('<html><head><title>Order #' + orderId + '</title>');
+      printWindow.document.write('<style>body{font-family: Arial; padding: 20px;} h1{color: #333;}</style>');
+      printWindow.document.write('</head><body>');
+      printWindow.document.write('<h1>Order #' + orderId + '</h1>');
+      printWindow.document.write('<p><strong>Customer:</strong> ' + (order.User?.name || order.customerName) + '</p>');
+      printWindow.document.write('<p><strong>Phone:</strong> ' + (order.User?.phone || order.customerPhone) + '</p>');
+      printWindow.document.write('<p><strong>Type:</strong> ' + order.orderType + '</p>');
+      if (order.deliveryAddress) {
+        printWindow.document.write('<p><strong>Address:</strong> ' + order.deliveryAddress + '</p>');
+      }
+      printWindow.document.write('<hr>');
+      printWindow.document.write('<h3>Items:</h3>');
+      (order.OrderItems || order.items || []).forEach(item => {
+        printWindow.document.write('<p>' + item.quantity + 'x ' + item.name + (item.size ? ' (' + item.size + ')' : '') + '</p>');
+      });
+      printWindow.document.write('<hr>');
+      printWindow.document.write('<h2>Total: $' + order.total + '</h2>');
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.print();
+    }
   };
 
   window.viewOrderDetails = (orderId) => {
     console.log('👁️ Viewing order:', orderId);
-    alert('Order details modal coming soon!');
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      alert('Order Details:\n\n' + JSON.stringify(order, null, 2));
+    }
   };
 
   console.log('✅ Orders panel initialized');
 }
 
+async function loadOrdersFromBackend() {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error('No auth token found');
+      return;
+    }
+
+    const response = await fetch('http://localhost:5001/api/orders/admin/all', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch orders');
+    }
+
+    const result = await response.json();
+    orders = result.data?.orders || result.orders || [];
+    
+    console.log('✅ Loaded', orders.length, 'orders from backend');
+  } catch (error) {
+    console.error('❌ Failed to load orders:', error);
+    orders = [];
+  }
+}
+
 function startAutoRefresh() {
-  // Refresh orders every 10 seconds
-  refreshInterval = setInterval(() => {
+  // Clear any existing interval
+  stopAutoRefresh();
+  
+  // Refresh orders every 15 seconds
+  refreshInterval = setInterval(async () => {
     console.log('🔄 Auto-refreshing orders...');
-    window.refreshOrders();
-  }, 10000);
+    await loadOrdersFromBackend();
+    const adminPanel = document.getElementById('admin-panel');
+    if (adminPanel && adminPanel.innerHTML.includes('Order Management')) {
+      adminPanel.innerHTML = renderOrdersPanel();
+    }
+  }, 15000);
 }
 
 function stopAutoRefresh() {
@@ -358,49 +508,4 @@ function stopAutoRefresh() {
     clearInterval(refreshInterval);
     refreshInterval = null;
   }
-}
-
-function loadMockOrders() {
-  // Mock orders for testing
-  orders = [
-    {
-      id: '1',
-      orderNumber: 'ORD-001',
-      status: 'pending',
-      orderType: 'delivery',
-      customerName: 'John Doe',
-      customerPhone: '(555) 123-4567',
-      customerEmail: 'john@example.com',
-      deliveryAddress: '123 Main St, Apt 4B, San Diego, CA 92101',
-      paymentMethod: 'cash',
-      items: [
-        { menuItemId: 1, name: 'Greek Pizza', size: '16"', quantity: 1, price: 16.99 },
-        { menuItemId: 2, name: 'Buffalo Wings', size: '10pc', quantity: 1, price: 10.99 }
-      ],
-      subtotal: 27.98,
-      tax: 2.31,
-      deliveryFee: 3.99,
-      total: 34.28,
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: '2',
-      orderNumber: 'ORD-002',
-      status: 'preparing',
-      orderType: 'pickup',
-      customerName: 'Jane Smith',
-      customerPhone: '(555) 987-6543',
-      customerEmail: 'jane@example.com',
-      deliveryAddress: '',
-      paymentMethod: 'cash',
-      items: [
-        { menuItemId: 3, name: 'Meat Lovers', size: '20"', quantity: 2, price: 24.99 }
-      ],
-      subtotal: 49.98,
-      tax: 4.12,
-      deliveryFee: 0,
-      total: 54.10,
-      createdAt: new Date(Date.now() - 600000).toISOString()
-    }
-  ];
 }
