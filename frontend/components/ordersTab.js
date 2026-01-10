@@ -15,6 +15,20 @@ export function renderOrdersTab() {
   `;
 }
 
+function getUserOrders(userId) {
+  try {
+    const ordersData = localStorage.getItem('pizzaOrders');
+    if (!ordersData) return [];
+    
+    const allOrders = JSON.parse(ordersData) || [];
+    return allOrders.filter(order => order.userId == userId);  // Loose == for string/number
+  } catch (error) {
+    console.error('❌ Error parsing orders:', error);
+    return [];
+  }
+}
+
+
 export async function loadOrders() {
   console.log('📋 Loading user orders...');
   
@@ -163,4 +177,22 @@ export function orderCard(order) {
       </div>
     </div>
   `;
+}
+
+// Add this export function at the end of your ordersTab.js file
+export function initOrdersTab() {
+  console.log('📋 Initializing Orders Tab...');
+  
+  // Wait a moment for DOM to be ready, then load orders
+  setTimeout(() => {
+    loadOrders();
+  }, 100);
+  
+  // Listen for auth changes to refresh orders
+  window.addEventListener('authChanged', () => {
+    console.log('🔄 Auth changed, refreshing orders...');
+    loadOrders();
+  });
+  
+  console.log('✅ Orders Tab initialized successfully');
 }

@@ -2,16 +2,19 @@
 import { renderCartDrawer, initCartDrawer } from './utils/cartDrawer.js';
 import { initGlobalFunctions } from './utils/cartStore.js';
 import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './components/menuRenderer.js';
-import { renderAdminTab, initAdminPanel } from './components/adminPanel.js';
-import { renderOrdersTab, loadOrders } from './components/ordersTab.js';
+import { renderAdminTab, initAdminPanel, loadAdminMenu } from './components/adminPanel.js';
+import { renderOrdersTab, initOrdersTab } from './components/ordersTab.js';
 import { renderCheckoutPage, initCheckout } from './components/checkout/CheckoutPage.js';
 import { renderOrderConfirmation, initOrderConfirmation } from './components/orders/OrderConfirmation.js';
-import { renderOrdersPanel, initOrdersPanel } from './components/admin/OrdersPanel.js';
-import { checkAuth, updateAuthUI } from './auth.js';
+import { checkAuth, updateAuthUI } from './auth.js'; 
+
 
 document.title = 'Mike\'s NY Giant Pizza - Online Ordering';
 
 let currentOrder = null; // Store current order for confirmation page
+
+// Helper to toggle admin button visibility
+
 
 // 🔧 DEFINE showTab BEFORE loadApp()
 window.showTab = (tab) => {
@@ -39,7 +42,7 @@ window.showTab = (tab) => {
     const ordersTab = document.getElementById('orders-tab');
     if (ordersTab) {
       ordersTab.style.display = 'block';
-      loadOrders();
+      initOrdersTab(); // ✅ Changed from loadOrders()
     }
   }
   
@@ -47,9 +50,8 @@ window.showTab = (tab) => {
     const adminTab = document.getElementById('admin-tab');
     if (adminTab) {
       adminTab.style.display = 'block';
-      // Use new OrdersPanel instead of old admin panel
-      adminTab.innerHTML = renderOrdersPanel();
-      initOrdersPanel();
+      // ✅ Initialize admin panel properly
+      initAdminPanel();
     }
   }
   
@@ -104,6 +106,7 @@ function mainUI() {
       <div style="display: flex; gap: 1rem; margin-bottom: 2rem; justify-content: center; flex-wrap: wrap;" id="tabs">
         <button onclick="showTab('menu')" class="tab-btn active">🍕 Menu</button>
         <button onclick="showTab('orders')" class="tab-btn">📋 My Orders</button>
+        <button id="admin-tab-btn" onclick="showTab('admin')" class="tab-btn" style="display: none;">⚙️ Admin</button>
       </div>
 
       <!-- Tab Content -->
@@ -111,7 +114,7 @@ function mainUI() {
       <div id="checkout-tab" style="display: none;"></div>
       <div id="confirmation-tab" style="display: none;"></div>
       ${renderOrdersTab()}
-      <div id="admin-tab" style="display: none;"></div>
+      ${renderAdminTab()}
 
       <!-- Cart -->
       ${renderCartDrawer()}
@@ -213,6 +216,9 @@ function mainUI() {
   `;
 }
 
+
+
+
 async function loadApp() {
   console.log('🚀 Starting app load...');
   
@@ -221,20 +227,34 @@ async function loadApp() {
   console.log('✅ HTML rendered');
   
   // 2. Initialize global functions
+  
   initMenuGlobalFunctions();
   initCartDrawer();
   initGlobalFunctions();
   console.log('✅ Global functions initialized');
   
-  // 3. Load menu data
+  // 3. Load menu dataS
   console.log('🔄 Loading menu...');
   await loadMenu();
   console.log('✅ Menu loaded');
   
-  // 4. Check authentication and update UI
-  await checkAuth();
+ // 4. Check authentication SAFELY
+try {
+  if (typeof checkAuth === 'function') {
+    console.log('🔍 checkAuth available');
+    await checkAuth();
+  } else {
+    console.warn('❌ checkAuth not imported - skipping');
+  }
+  await updateAuthUI();
+} catch (error) {
+  console.warn('⚠️ Auth check failed:', error.message);
+}
+console.log('🔍 AFTER AUTH - window.currentUser:', window.currentUser);
+
   
-  // 5. Update cart drawer to include checkout button
+  
+  // 6. Update cart drawer
   updateCartDrawerWithCheckout();
   
   console.log('✅ App fully loaded!');
