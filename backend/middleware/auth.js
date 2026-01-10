@@ -8,16 +8,51 @@ const JWT_SECRET = process.env.JWT_SECRET || 'mikes_pizza_super_secret_2025_chan
 const auth = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'No token provided' });
+    
+    if (!token) {
+      return res.status(401).json({ 
+        success: false,
+        error: 'No token provided' 
+      });
+    }
     
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findByPk(decoded.id);
-    if (!user) return res.status(401).json({ error: 'User not found' });
+    const user = await User.findByPk(decoded.id, {
+      attributes: { exclude: ['password'] } // Don't include password
+    });
+    
+    if (!user) {
+      return res.status(401).json({ 
+        success: false,
+        error: 'User not found' 
+      });
+    }
     
     req.user = user;
+    req.userId = user.id; // Also set userId for convenience
     next();
+    
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    console.error('Auth error:', error);
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ 
+        success: false,
+        error: 'Invalid token' 
+      });
+    }
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ 
+        success: false,
+        error: 'Token expired' 
+      });
+    }
+    
+    res.status(401).json({ 
+      success: false,
+      error: 'Authentication failed' 
+    });
   }
 };
 
@@ -29,9 +64,12 @@ const optionalAuth = async (req, res, next) => {
     if (token) {
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        const user = await User.findByPk(decoded.id);
+        const user = await User.findByPk(decoded.id, {
+          attributes: { exclude: ['password'] }
+        });
         if (user) {
           req.user = user; // Set user if valid token
+          req.userId = user.id;
         }
       } catch (err) {
         // Invalid token, but we don't reject - just continue without user
@@ -50,10 +88,16 @@ const optionalAuth = async (req, res, next) => {
 // Admin-only middleware (must be used after auth middleware)
 const adminAuth = (req, res, next) => {
   if (!req.user) {
-    return res.status(401).json({ error: 'Authentication required' });
+    return res.status(401).json({ 
+      success: false,
+      error: 'Authentication required' 
+    });
   }
   if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
+    return res.status(403).json({ 
+      success: false,
+      error: 'Admin access required' 
+    });
   }
   next();
 };
