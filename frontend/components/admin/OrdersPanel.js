@@ -56,9 +56,9 @@ export function renderOrdersPanel() {
 
       <!-- Orders Content -->
       <div id="orders-content">
-        ${currentOrderTab === 'new' ? renderNewOrders(newOrders) : ''}
-        ${currentOrderTab === 'progress' ? renderInProgressOrders(inProgressOrders) : ''}
-        ${currentOrderTab === 'completed' ? renderCompletedOrders(completedOrders) : ''}
+        <div id="new-orders-content">${renderNewOrders(newOrders)}</div>
+        <div id="progress-orders-content" style="display: none;">${renderInProgressOrders(inProgressOrders)}</div>
+        <div id="completed-orders-content" style="display: none;">${renderCompletedOrders(completedOrders)}</div>
       </div>
     </div>
 
@@ -304,161 +304,61 @@ function formatTime(timestamp) {
 
 export async function initOrdersPanel() {
   console.log('📝 Initializing orders panel...');
-
-  // Load orders from backend
+  
   await loadOrdersFromBackend();
-
-  // Auto-refresh every 15 seconds
   startAutoRefresh();
-
-  // Global functions
+  
+  // ✅ FIXED: Proper tab switching WITHOUT re-rendering entire panel
   window.switchOrderTab = (tab) => {
+    console.log('🔄 Switching to tab:', tab);
     currentOrderTab = tab;
-    const adminPanel = document.getElementById('admin-panel');
-    if (adminPanel) {
-      adminPanel.innerHTML = renderOrdersPanel();
-    }
-  };
-
-  window.refreshOrders = async () => {
-    console.log('🔄 Refreshing orders...');
-    await loadOrdersFromBackend();
-    const adminPanel = document.getElementById('admin-panel');
-    if (adminPanel) {
-      adminPanel.innerHTML = renderOrdersPanel();
-    }
-  };
-
-  window.acceptOrder = async (orderId) => {
-    if (!confirm('Accept this order?')) return;
-    console.log('✅ Accepting order:', orderId);
     
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: 'accepted' })
-      });
-
-      if (response.ok) {
-        await loadOrdersFromBackend();
-        const adminPanel = document.getElementById('admin-panel');
-        if (adminPanel) {
-          adminPanel.innerHTML = renderOrdersPanel();
-        }
-        alert('✅ Order accepted!');
-      } else {
-        throw new Error('Failed to accept order');
-      }
-    } catch (error) {
-      console.error('Error accepting order:', error);
-      alert('❌ Failed to accept order. Please try again.');
-    }
-  };
-
-  window.rejectOrder = async (orderId) => {
-    if (!confirm('Reject this order? This cannot be undone.')) return;
-    console.log('❌ Rejecting order:', orderId);
+    // Update tab buttons
+    document.querySelectorAll('.order-tab').forEach(btn => {
+      btn.classList.remove('active');
+      btn.style.background = 'transparent';
+      btn.style.color = '#666';
+      btn.style.borderBottomColor = 'transparent';
+    });
     
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: 'cancelled' })
-      });
-
-      if (response.ok) {
-        await loadOrdersFromBackend();
-        const adminPanel = document.getElementById('admin-panel');
-        if (adminPanel) {
-          adminPanel.innerHTML = renderOrdersPanel();
-        }
-        alert('❌ Order rejected');
-      } else {
-        throw new Error('Failed to reject order');
-      }
-    } catch (error) {
-      console.error('Error rejecting order:', error);
-      alert('❌ Failed to reject order. Please try again.');
+    const activeBtn = Array.from(document.querySelectorAll('.order-tab')).find(btn => 
+      btn.getAttribute('onclick').includes(tab)
+    );
+    if (activeBtn) {
+      activeBtn.classList.add('active');
+      activeBtn.style.background = tab === 'new' ? '#ff6b35' : tab === 'progress' ? '#007bff' : '#28a745';
+      activeBtn.style.color = 'white';
+      activeBtn.style.borderBottomColor = tab === 'new' ? '#ff6b35' : tab === 'progress' ? '#007bff' : '#28a745';
     }
-  };
-
-  window.updateOrderStatus = async (orderId, newStatus) => {
-    console.log('🔄 Updating order status:', orderId, newStatus);
     
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-
-      if (response.ok) {
-        await loadOrdersFromBackend();
-        const adminPanel = document.getElementById('admin-panel');
-        if (adminPanel) {
-          adminPanel.innerHTML = renderOrdersPanel();
-        }
-      } else {
-        throw new Error('Failed to update status');
-      }
-    } catch (error) {
-      console.error('Error updating order:', error);
-      alert('❌ Failed to update order status. Please try again.');
+    // Show correct content
+    document.querySelectorAll('#orders-content > div').forEach(div => {
+      div.style.display = 'none';
+    });
+    
+    // Show orders based on tab
+    const ordersContent = document.getElementById('orders-content');
+    if (ordersContent) {
+      const newOrdersHtml = renderNewOrders(orders.filter(o => o.status === 'pending'));
+      const progressOrdersHtml = renderInProgressOrders(orders.filter(o => ['accepted', 'preparing', 'ready'].includes(o.status)));
+      const completedOrdersHtml = renderCompletedOrders(orders.filter(o => o.status === 'completed'));
+      
+      ordersContent.innerHTML = `
+        ${tab === 'new' ? newOrdersHtml : ''}
+        ${tab === 'progress' ? progressOrdersHtml : ''}
+        ${tab === 'completed' ? completedOrdersHtml : ''}
+      `;
     }
+    
+    console.log('✅ Tab switched to:', tab);
   };
-
-  window.printOrder = (orderId) => {
-    console.log('🖨️ Printing order:', orderId);
-    const order = orders.find(o => o.id === orderId);
-    if (order) {
-      // Create a simple print view
-      const printWindow = window.open('', '', 'height=600,width=800');
-      printWindow.document.write('<html><head><title>Order #' + orderId + '</title>');
-      printWindow.document.write('<style>body{font-family: Arial; padding: 20px;} h1{color: #333;}</style>');
-      printWindow.document.write('</head><body>');
-      printWindow.document.write('<h1>Order #' + orderId + '</h1>');
-      printWindow.document.write('<p><strong>Customer:</strong> ' + (order.User?.name || order.customerName) + '</p>');
-      printWindow.document.write('<p><strong>Phone:</strong> ' + (order.User?.phone || order.customerPhone) + '</p>');
-      printWindow.document.write('<p><strong>Type:</strong> ' + order.orderType + '</p>');
-      if (order.deliveryAddress) {
-        printWindow.document.write('<p><strong>Address:</strong> ' + order.deliveryAddress + '</p>');
-      }
-      printWindow.document.write('<hr>');
-      printWindow.document.write('<h3>Items:</h3>');
-      (order.OrderItems || order.items || []).forEach(item => {
-        printWindow.document.write('<p>' + item.quantity + 'x ' + item.name + (item.size ? ' (' + item.size + ')' : '') + '</p>');
-      });
-      printWindow.document.write('<hr>');
-      printWindow.document.write('<h2>Total: $' + order.total + '</h2>');
-      printWindow.document.write('</body></html>');
-      printWindow.document.close();
-      printWindow.print();
-    }
-  };
-
-  window.viewOrderDetails = (orderId) => {
-    console.log('👁️ Viewing order:', orderId);
-    const order = orders.find(o => o.id === orderId);
-    if (order) {
-      alert('Order Details:\n\n' + JSON.stringify(order, null, 2));
-    }
-  };
-
-  console.log('✅ Orders panel initialized');
+  
+  // ✅ Initial tab load
+  setTimeout(() => window.switchOrderTab('new'), 100);
+  
+  console.log('✅ Orders panel fully initialized');
 }
+
 
 async function loadOrdersFromBackend() {
   try {
