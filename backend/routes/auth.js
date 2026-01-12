@@ -3,6 +3,10 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 const { User } = require('../models');
+const { OAuth2Client } = require('google-auth-library');
+
+// ✅ Initialize Google OAuth Client (set GOOGLE_CLIENT_ID in .env)
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // REGISTER
 router.post('/register', async (req, res) => {
@@ -29,11 +33,11 @@ router.post('/register', async (req, res) => {
     // Create user (password will be auto-hashed by model hook)
     const user = await User.create({ 
       email, 
-      password,  // Don't hash here - the model will do it!
+      password,
       name, 
       phone: phone || null, 
       address: address || null,
-      role: 'customer' // Always customer for public registration
+      role: 'customer'
     });
 
     // Generate token
@@ -119,6 +123,76 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ 
       success: false,
       error: error.message 
+    });
+  }
+});
+
+// ✅ GOOGLE OAUTH LOGIN
+router.post('/google', async (req, res) => {
+  try {
+    const { googleToken } = req.body;
+    
+    if (!googleToken) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Google token is required' 
+      });
+    }
+    
+    console.log('🔐 Verifying Google token...');
+    
+    // Verify the Google token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: googleToken,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+    
+    const payload = ticket.getPayload();
+    const googleEmail = payload.email;
+    const googleName = payload.name;
+    
+    console.log('🔐 Google payload:', { googleEmail, googleName });
+    
+    // Check if user exists
+    let user = await User.findOne({ where: { email: googleEmail } });
+    
+    if (!user) {
+      // ✅ CREATE NEW USER FROM GOOGLE DATA
+      console.log('👤 Creating new Google user...');
+      user = await User.create({
+        email: googleEmail,
+        name: googleName,
+        password: 'google_oauth_' + Math.random().toString(36), // Random password for OAuth users
+        role: 'customer'
+      });
+    } else {
+      console.log('👤 Existing Google user found');
+    }
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'mikes_pizza_super_secret_2025_change_in_prod',
+      { expiresIn: '7d' }
+    );
+    
+    res.json({
+      success: true,
+      message: 'Google authentication successful',
+      token,
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        name: user.name,
+        role: user.role 
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Google auth error:', error);
+    res.status(401).json({ 
+      success: false,
+      error: error.message || 'Google authentication failed' 
     });
   }
 });
