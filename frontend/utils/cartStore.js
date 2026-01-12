@@ -21,7 +21,7 @@ export function addToCart(itemId) {
   } else {
     // Use the clean ID and spread item properties
     cart.push({ ...item, id: id, quantity: 1 });
-    showToast(`Added ${item.name} to cart! 🛒`);
+    showToast(`Added ${item.name} to cart! 🛍️`);
   }
   
   saveAndRefresh();
@@ -108,9 +108,12 @@ export function renderCart() {
 export function updateCartCount() {
   const count = getCartCount();
   const countEl = document.getElementById('cart-count');
-  const checkoutBtn = document.getElementById('checkout-btn');
   if (countEl) countEl.textContent = count;
-  if (checkoutBtn) checkoutBtn.style.display = count > 0 ? 'block' : 'none';
+  
+  // Also update checkout button state in cart drawer
+  if (window.updateCheckoutButton) {
+    window.updateCheckoutButton();
+  }
 }
 
 // 👇 UI HELPERS 👇
@@ -120,6 +123,7 @@ export function showToast(message) {
     position: fixed; top: 2rem; right: 2rem; background: #28a745; 
     color: white; padding: 1rem 2rem; border-radius: 8px; 
     z-index: 1001; transform: translateX(400px); transition: transform 0.3s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   `;
   toast.textContent = message;
   document.body.appendChild(toast);
@@ -130,41 +134,6 @@ export function showToast(message) {
   }, 2000);
 }
 
-// 👇 CHECKOUT 👇
-export async function checkout() {
-  if (cart.length === 0) return;
-  
-  const orderData = {
-    items: cart.map(item => ({
-      id: item.id, name: item.name, size: item.size || 'N/A',
-      price: item.price, quantity: item.quantity
-    })),
-    subtotal: getCartTotal(),
-    timestamp: new Date().toISOString(),
-    status: 'pending'
-  };
-
-  try {
-    const res = await fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(orderData)
-    });
-
-    if (res.ok) {
-      const order = await res.json();
-      clearCart();
-      updateCartCount();
-      window.toggleCart?.(); // Close drawer
-      showToast(`✅ Order #${order.id} placed!`);
-    } else {
-      showToast('Checkout failed - try again!');
-    }
-  } catch (error) {
-    showToast('Network error - check connection!');
-  }
-}
-
 // 👇 GLOBAL EXPORTS (for onclick handlers) 👇
 export function initGlobalFunctions() {
   window.addToCart = addToCart;
@@ -173,6 +142,9 @@ export function initGlobalFunctions() {
   window.renderCart = renderCart;
   window.updateCartCount = updateCartCount;
   window.showToast = showToast;
-  window.checkout = checkout;
   window.setMenuItems = setMenuItems;
+  window.getCartCount = getCartCount; // Export for cart drawer
+  window.getCart = getCart; // Export for checkout
+  window.getCartTotal = getCartTotal; // Export for checkout
+  window.clearCart = clearCart; // Export for checkout
 }

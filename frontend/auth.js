@@ -1,43 +1,88 @@
 // frontend/auth.js - CLIENT-SIDE auth (COMPLETE)
-import { showToast } from './utils/cartStore.js';  // Import showToast
-
+import { showToast } from './utils/cartStore.js'; 
+// ✅ ADD THIS MISSING FUNCTION
 export async function checkAuth() {
   const token = localStorage.getItem('token');
-  if (!token) return;
   
-  try {
-    const res = await fetch('/api/auth/profile', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    
-    if (res.ok) {
-      const { user } = await res.json();
-      window.currentUser = user;
-      updateAuthUI();
+  if (token) {
+    try {
+      const response = await fetch('http://localhost:5001/api/auth/profile', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       
-      // Add admin tab if admin
-      const tabs = document.querySelector('#tabs');
-      if (user.role === 'admin' && !tabs.querySelector('[onclick="showTab(\'admin\')"]')) {
-        tabs.innerHTML += '<button onclick="showTab(\'admin\')" class="tab-btn">⚙️ Admin Panel</button>';
+      if (response.ok) {
+        const user = await response.json();
+        window.currentUser = user;
+        updateAuthUI();
+        return user;
+      } else {
+        localStorage.removeItem('token');
+        window.currentUser = null;
       }
+    } catch (error) {
+      console.error('Auth check failed:', error);
     }
-  } catch (error) {
-    console.error('Auth check failed:', error);
   }
+  
+  window.currentUser = null;
+  updateAuthUI();
+  return null;
 }
 
-export function updateAuthUI() {
+// ... rest of your existing code (updateAuthUI, handleAuthSubmit, etc.)
+
+
+export async function updateAuthUI() {
   const status = document.getElementById('user-info');
   const logoutBtn = document.getElementById('logout-btn');
+  const adminBtn = document.getElementById('admin-tab-btn');  // ✅ Added
+  
+  if (!status) {
+    console.warn('❌ user-info element not found');
+    return;
+  }
   
   if (window.currentUser) {
-    status.innerHTML = `👋 ${window.currentUser.name || window.currentUser.email} (${window.currentUser.role.toUpperCase()})`;
-    logoutBtn.style.display = 'inline-block';
+    // Logged in
+    const displayName = window.currentUser.name || window.currentUser.email || 'User';
+    const role = window.currentUser.role || 'customer';
+    
+    status.innerHTML = `👋 ${displayName} (${role.toUpperCase()})`;
+    status.style.display = 'inline';
+    
+    if (logoutBtn) {
+      logoutBtn.style.display = 'inline-block';
+    }
+    
+    // ✅ ADMIN BUTTON LOGIC HERE
+    const isAdmin = role === 'admin';
+    if (adminBtn) {
+      adminBtn.style.display = isAdmin ? 'block' : 'none';
+      console.log(`⚙️ Admin button ${isAdmin ? 'SHOWN' : 'hidden'} for ${role}`);
+    }
+    
+    console.log('✅ Auth UI updated for user:', displayName);
   } else {
+    // Guest
     status.innerHTML = '👋 Guest - <button onclick="showAuth()" style="background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Login/Register</button>';
-    logoutBtn.style.display = 'none';
+    
+    if (logoutBtn) {
+      logoutBtn.style.display = 'none';
+    }
+    
+    // ✅ Hide admin for guests
+    if (adminBtn) {
+      adminBtn.style.display = 'none';
+    }
+    
+    console.log('✅ Auth UI set to guest mode');
   }
+  
+  // Dispatch event for other components
+  window.dispatchEvent(new CustomEvent('authChanged'));
 }
+
+
 
 // ✅ EXPORTED - Can be imported
 export async function handleAuthSubmit(isRegister = false) {
@@ -65,7 +110,6 @@ export async function handleAuthSubmit(isRegister = false) {
       updateAuthUI();
       window.hideAuth();
       showToast(`Welcome ${data.user.email}! 👋`);
-      if (data.user.role === 'admin') window.showTab('admin');
     } else {
       showToast(data.error || 'Login failed', 'error');
     }
