@@ -1,4 +1,3 @@
-// backend/routes/admin.js
 const express = require('express');
 const router = express.Router();
 const { auth, adminAuth } = require('../middleware/auth');
@@ -29,7 +28,8 @@ router.get('/stats', async (req, res) => {
     });
 
     // Today's revenue (exclude cancelled orders)
-    const todayRevenue = await Order.sum('totalAmount', {
+    // ✅ FIXED: Changed 'totalAmount' to 'total' to match Order model
+    const todayRevenue = await Order.sum('total', {
       where: {
         createdAt: {
           [Op.gte]: today
@@ -74,6 +74,34 @@ router.get('/stats', async (req, res) => {
     res.status(500).json({ 
       success: false,
       error: 'Error fetching statistics' 
+    });
+  }
+});
+
+// =====================================================
+// GET ALL ORDERS
+// =====================================================
+
+// GET /api/admin/all - Get all orders (admin only)
+router.get('/all', async (req, res) => {
+  try {
+    const orders = await Order.findAll({
+      include: [{
+        model: User,
+        attributes: ['id', 'name', 'email', 'phone']
+      }],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: { orders }
+    });
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch orders' 
     });
   }
 });
@@ -257,7 +285,8 @@ router.get('/system-info', async (req, res) => {
     const totalOrders = await Order.count();
     const totalMenuItems = await MenuItem.count();
     const totalIngredients = await Ingredient.count();
-    const totalRevenue = await Order.sum('totalAmount', {
+    // ✅ FIXED: Changed 'totalAmount' to 'total' to match Order model
+    const totalRevenue = await Order.sum('total', {
       where: { status: { [Op.ne]: 'cancelled' } }
     }) || 0;
 
