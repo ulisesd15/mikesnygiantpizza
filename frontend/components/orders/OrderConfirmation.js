@@ -109,7 +109,7 @@ export function renderOrderConfirmation(order) {
         <div style="background: white; border: 1px solid #ddd; border-radius: 12px; padding: 1.5rem;">
           <h3 style="margin: 0 0 1rem; color: #333;">🍕 Items Ordered</h3>
           <div style="max-height: 250px; overflow-y: auto;">
-            ${order.items.map(item => `
+            ${(order.items || order.OrderItems || []).map(item => `
               <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #f5f5f5;">
                 <div>
                   <div style="font-weight: 600;">${item.name}</div>
@@ -124,21 +124,21 @@ export function renderOrderConfirmation(order) {
           <div style="margin-top: 1rem; padding-top: 1rem; border-top: 2px solid #ddd;">
             <div class="price-row">
               <span>Subtotal:</span>
-              <span>$${order.subtotal.toFixed(2)}</span>
+              <span>$${parseFloat(order.subtotal).toFixed(2)}</span>
             </div>
             <div class="price-row">
               <span>Tax:</span>
-              <span>$${order.tax.toFixed(2)}</span>
+              <span>$${parseFloat(order.tax).toFixed(2)}</span>
             </div>
             ${order.deliveryFee > 0 ? `
               <div class="price-row">
                 <span>Delivery Fee:</span>
-                <span>$${order.deliveryFee.toFixed(2)}</span>
+                <span>$${parseFloat(order.deliveryFee).toFixed(2)}</span>
               </div>
             ` : ''}
             <div class="price-row" style="font-size: 1.25rem; font-weight: bold; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #ddd;">
               <span>Total:</span>
-              <span style="color: #28a745;">$${order.total.toFixed(2)}</span>
+              <span>$${parseFloat(order.total).toFixed(2)}</span>
             </div>
           </div>
         </div>

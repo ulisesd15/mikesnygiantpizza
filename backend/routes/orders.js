@@ -182,7 +182,8 @@ router.get('/my-orders', authenticate, async (req, res) => {
       where: whereClause,
       include: [{
         model: OrderItem,
-        include: [{ model: MenuItem }]
+        as: 'OrderItems',
+        include: [{ model: MenuItem, as: 'MenuItem' }]
       }],
       order: [['createdAt', 'DESC']],
       limit: parseInt(limit),
@@ -346,7 +347,8 @@ router.get('/admin/pending', authenticate, adminAuth, async (req, res) => {
       where: { status: 'pending' },
       include: [{
         model: OrderItem,
-        include: [{ model: MenuItem }]
+        as: 'OrderItems',
+        include: [{ model: MenuItem, as: 'MenuItem'}]
       }, {
         model: User,
         attributes: ['id', 'name', 'email', 'phone'],
@@ -375,7 +377,8 @@ router.get('/customer/:userId', authenticate, adminAuth, async (req, res) => {
       where: { userId: req.params.userId },
       include: [{
         model: OrderItem,
-        include: [{ model: MenuItem }]
+        as: 'OrderItems',
+        include: [{ model: MenuItem, as: 'MenuItem'}]
       }],
       order: [['createdAt', 'DESC']],
       limit: 50
