@@ -20,8 +20,9 @@ async function loadDashboardStats() {
       return;
     }
     // Fetch stats from backend
+    // ✅ FIXED: Changed endpoint from /api/orders/all to /api/admin/all
      const [ordersRes, menuRes] = await Promise.all([
-      fetch('http://localhost:5001/api/orders/all', {
+      fetch('http://localhost:5001/api/admin/all', {
         method: 'GET',
         headers: { 
           'Authorization': `Bearer ${token}`,
