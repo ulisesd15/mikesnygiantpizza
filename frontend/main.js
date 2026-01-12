@@ -1,4 +1,4 @@
-// main.js - Updated with Checkout Integration
+// main.js - Updated with Google OAuth and Checkout Integration
 import { renderCartDrawer, initCartDrawer } from './utils/cartDrawer.js';
 import { initGlobalFunctions } from './utils/cartStore.js';
 import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './components/menuRenderer.js';
@@ -126,10 +126,22 @@ function mainUI() {
           
           <div id="auth-form" style="text-align: center;">
             <h3 style="color: #333; margin: 0 0 1.5rem; font-size: 1.5rem;">👋 Welcome Back</h3>
+            
+            <!-- Email & Password Login -->
             <input id="auth-email" type="email" placeholder="Email" class="input-style" style="margin-bottom: 1rem;">
             <input id="auth-password" type="password" placeholder="Password" class="input-style" style="margin-bottom: 1rem;">
             <button onclick="handleAuthSubmit()" style="background: #28a745; color: white; border: none; padding: 0.875rem; border-radius: 8px; font-size: 1rem; cursor: pointer; width: 100%; font-weight: 500; margin-bottom: 0.75rem;">🚀 Login</button>
-            <button onclick="handleAuthSubmit(true)" style="background: linear-gradient(135deg, #17a2b8, #138496); color: white; border: none; padding: 0.875rem; border-radius: 8px; font-size: 1rem; cursor: pointer; width: 100%; font-weight: 500;">➕ Create Account</button>
+            <button onclick="handleAuthSubmit(true)" style="background: linear-gradient(135deg, #17a2b8, #138496); color: white; border: none; padding: 0.875rem; border-radius: 8px; font-size: 1rem; cursor: pointer; width: 100%; font-weight: 500; margin-bottom: 1rem;">➕ Create Account</button>
+            
+            <!-- Divider -->
+            <div style="text-align: center; margin: 1.5rem 0; position: relative;">
+              <div style="border-top: 1px solid #ddd;"></div>
+              <span style="background: white; padding: 0 0.5rem; color: #999; position: relative; top: -10px; font-size: 0.9rem;">or</span>
+            </div>
+            
+            <!-- Google Sign-In -->
+            <div id="google-signin" style="margin-bottom: 1rem;"></div>
+            
             <p style="margin-top: 1.5rem; color: #666; font-size: 0.9rem;">
               Need help? <a href="#" onclick="showForgotPassword(); return false;" style="color: #007bff; text-decoration: none;">Forgot password?</a>
             </p>
@@ -216,8 +228,48 @@ function mainUI() {
   `;
 }
 
-
-
+// 🔧 LOAD GOOGLE SIGN-IN
+function loadGoogleSignIn() {
+  // Load Google API script
+  const script = document.createElement('script');
+  script.src = 'https://accounts.google.com/gsi/client';
+  script.async = true;
+  script.defer = true;
+  script.onload = () => {
+    console.log('🔐 Google Sign-In library loaded');
+    
+    // Initialize Google Sign-In
+    google.accounts.id.initialize({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
+      callback: async (response) => {
+        console.log('✅ Google response received');
+        // Call the auth handler from auth.js
+        if (window.handleGoogleAuth) {
+          await window.handleGoogleAuth(response.credential);
+        }
+      },
+      error_callback: () => {
+        console.error('❌ Google Sign-In error');
+      }
+    });
+    
+    // Render the button
+    const googleSignInDiv = document.getElementById('google-signin');
+    if (googleSignInDiv && google.accounts.id) {
+      google.accounts.id.renderButton(
+        googleSignInDiv,
+        { 
+          theme: 'outline', 
+          size: 'large',
+          width: '100%',
+          text: 'signin_with'
+        }
+      );
+      console.log('✅ Google Sign-In button rendered');
+    }
+  };
+  document.head.appendChild(script);
+}
 
 async function loadApp() {
   console.log('🚀 Starting app load...');
@@ -226,31 +278,33 @@ async function loadApp() {
   document.getElementById('app').innerHTML = mainUI();
   console.log('✅ HTML rendered');
   
-  // 2. Initialize global functions
+  // 2. Load Google Sign-In
+  loadGoogleSignIn();
   
+  // 3. Initialize global functions
   initMenuGlobalFunctions();
   initCartDrawer();
   initGlobalFunctions();
   console.log('✅ Global functions initialized');
   
-  // 3. Load menu dataS
+  // 4. Load menu data
   console.log('🔄 Loading menu...');
   await loadMenu();
   console.log('✅ Menu loaded');
   
- // 4. Check authentication SAFELY
-try {
-  if (typeof checkAuth === 'function') {
-    console.log('🔍 checkAuth available');
-    await checkAuth();
-  } else {
-    console.warn('❌ checkAuth not imported - skipping');
+  // 5. Check authentication SAFELY
+  try {
+    if (typeof checkAuth === 'function') {
+      console.log('🔍 checkAuth available');
+      await checkAuth();
+    } else {
+      console.warn('❌ checkAuth not imported - skipping');
+    }
+    await updateAuthUI();
+  } catch (error) {
+    console.warn('⚠️ Auth check failed:', error.message);
   }
-  await updateAuthUI();
-} catch (error) {
-  console.warn('⚠️ Auth check failed:', error.message);
-}
-console.log('🔍 AFTER AUTH - window.currentUser:', window.currentUser);
+  console.log('🔍 AFTER AUTH - window.currentUser:', window.currentUser);
 
   
   
