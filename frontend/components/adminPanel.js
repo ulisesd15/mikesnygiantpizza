@@ -4,6 +4,353 @@ import { renderOrdersPanel, initOrdersPanel } from './admin/OrdersPanel.js';
 
 let currentAdminSection = 'dashboard'; // Default to dashboard
 
+
+
+// Load dashboard stats
+async function loadDashboardStats() {
+  try {
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      console.error('❌ Please log in again');
+      document.getElementById('stat-orders-today').textContent = '—';
+      document.getElementById('stat-revenue-today').textContent = '$0.00';
+      document.getElementById('stat-active-orders').textContent = '—';
+      document.getElementById('stat-menu-items').textContent = '—';
+      return;
+    }
+    // Fetch stats from backend
+     const [ordersRes, menuRes] = await Promise.all([
+      fetch('http://localhost:5001/api/orders/all', {
+        method: 'GET',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }),
+      fetch('http://localhost:5001/api/menu', {
+        method: 'GET',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+    ]);
+
+    
+    // Better error handling
+    if (!ordersRes.ok) {
+      const error = await ordersRes.json();
+      throw new Error(`Orders API Error (${ordersRes.status}): ${error.error || 'Unknown error'}`);
+    }
+    
+    if (!menuRes.ok) {
+      const error = await menuRes.json();
+      throw new Error(`Menu API Error (${menuRes.status}): ${error.error || 'Unknown error'}`);
+    }
+    
+    const ordersData = await ordersRes.json();
+    const menuData = await menuRes.json();
+    
+    console.log('✅ Orders data received:', ordersData);
+    console.log('✅ Menu data received:', menuData);
+    
+    // Flexible data extraction
+    const orders = ordersData.data?.orders || ordersData.orders || [];
+    const menuItems = menuData.data || menuData || [];
+    
+    // Calculate stats
+    const today = new Date().toDateString();
+    const ordersToday = orders.filter(o => {
+      try {
+        return new Date(o.createdAt).toDateString() === today;
+      } catch (e) {
+        return false;
+      }
+    });
+    
+    const revenueToday = ordersToday.reduce((sum, o) => {
+      const total = parseFloat(o.total) || 0;
+      return sum + total;
+    }, 0);
+    
+    const activeOrders = orders.filter(o => 
+      ['pending', 'accepted', 'preparing', 'ready'].includes(o.status)
+    );
+    
+    console.log('📈 Stats:', { 
+      ordersToday: ordersToday.length, 
+      revenueToday, 
+      activeOrders: activeOrders.length, 
+      menuItems: menuItems.length 
+    });
+    
+    // Update UI
+    document.getElementById('stat-orders-today').textContent = ordersToday.length;
+    document.getElementById('stat-revenue-today').textContent = `$${revenueToday.toFixed(2)}`;
+    document.getElementById('stat-active-orders').textContent = activeOrders.length;
+    document.getElementById('stat-menu-items').textContent = menuItems.length;
+    
+    // Show recent orders
+    renderRecentOrders(orders.slice(0, 5));
+    
+    console.log('✅ Dashboard stats loaded successfully');
+    
+  } catch (error) {
+    console.error('❌ Failed to load dashboard stats:', error.message);
+    document.getElementById('stat-orders-today').textContent = '⚠️';
+    document.getElementById('stat-revenue-today').textContent = '⚠️';
+    document.getElementById('stat-active-orders').textContent = '⚠️';
+    document.getElementById('stat-menu-items').textContent = '⚠️';
+  }
+}
+
+window.refreshDashboard = () => {
+  loadDashboardStats();
+  showToast('Dashboard refreshed!');
+};
+
+// Menu CRUD Operations
+export async function addMenuItem(e) {
+  e.preventDefault();
+  
+  if (!window.currentUser || window.currentUser.role !== 'admin') {
+    showToast('Admin access required!', 'error');
+    return;
+  }
+
+  const formData = {
+    name: document.getElementById('item-name').value.trim(),
+    price: parseFloat(document.getElementById('item-price').value),
+    category: document.getElementById('item-category').value,
+    size: document.getElementById('item-size')?.value.trim() || null,
+    description: document.getElementById('item-desc').value.trim() || null,
+    isAvailable: document.getElementById('item-available').checked
+  };
+
+  if (!formData.name || !formData.price || formData.price <= 0) {
+    showToast('Please fill name and valid price', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch('http://localhost:5001/api/menu', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    if (res.ok) {
+      if (window.loadMenu) window.loadMenu();
+      loadAdminMenu();
+      e.target.reset();
+      showToast('✅ Item added successfully!');
+    } else {
+      const error = await res.json();
+      showToast(error.error || 'Failed to add item', 'error');
+    }
+  } catch (error) {
+    showToast('Network error - try again', 'error');
+    console.error('Add menu item failed:', error);
+  }
+}
+
+export async function loadAdminMenu() {
+  if (!window.currentUser || window.currentUser.role !== 'admin') {
+    const grid = document.getElementById('admin-menu-grid');
+    if (grid) {
+      grid.innerHTML = '<div style="text-align: center; padding: 3rem; color: #dc3545;">🔐 Admin access required</div>';
+    }
+    return;
+  }
+
+  try {
+    const res = await fetch('http://localhost:5001/api/menu', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    
+    if (res.ok) {
+      const items = await res.json();
+      renderAdminMenuGrid(items);
+    }
+  } catch (error) {
+    const grid = document.getElementById('admin-menu-grid');
+    if (grid) {
+      grid.innerHTML = '<div style="text-align: center; padding: 3rem; color: #666;">⚠️ Failed to load menu</div>';
+    }
+  }
+}
+
+
+// Helper function for status colors
+function getStatusColor(status) {
+  const colors = {
+    'pending': '#ff6b35',
+    'accepted': '#007bff',
+    'preparing': '#ffc107',
+    'ready': '#28a745',
+    'completed': '#6c757d',
+    'cancelled': '#dc3545'
+  };
+  return colors[status] || '#6c757d';
+}
+
+
+// Global functions
+window.editMenuItem = async (itemId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`http://localhost:5001/api/menu/${itemId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const item = await res.json();
+    
+    if (item) {
+      if (currentAdminSection !== 'menu') {
+        window.switchAdminSection('menu');
+      }
+      
+      setTimeout(() => {
+        document.getElementById('item-name').value = item.name;
+        document.getElementById('item-price').value = item.price;
+        document.getElementById('item-category').value = item.category;
+        document.getElementById('item-size').value = item.size || '';
+        document.getElementById('item-desc').value = item.description || '';
+        document.getElementById('item-available').checked = item.isAvailable;
+        
+        const submitBtn = document.querySelector('#menu-form button[type="submit"]');
+        const cancelBtn = document.getElementById('cancel-edit-btn');
+        
+        if (submitBtn) {
+          submitBtn.textContent = '💾 Update Item';
+          submitBtn.dataset.editing = itemId;
+        }
+        
+        if (cancelBtn) cancelBtn.style.display = 'block';
+        
+        document.getElementById('menu-form')?.scrollIntoView({ behavior: 'smooth' });
+        showToast(`Editing: ${item.name}`);
+      }, 100);
+    }
+  } catch (error) {
+    showToast('Failed to load item', 'error');
+  }
+};
+
+window.cancelEditMenuItem = () => {
+  const form = document.getElementById('menu-form');
+  if (form) {
+    form.reset();
+    
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const cancelBtn = document.getElementById('cancel-edit-btn');
+    
+    if (submitBtn) {
+      submitBtn.textContent = '➕ Add Item';
+      delete submitBtn.dataset.editing;
+    }
+    
+    if (cancelBtn) cancelBtn.style.display = 'none';
+  }
+};
+
+window.deleteMenuItem = async (itemId) => {
+  if (!confirm('Delete this menu item? This cannot be undone.')) return;
+  
+  try {
+    const res = await fetch(`http://localhost:5001/api/menu/${itemId}`, { 
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    
+    if (res.ok) {
+      loadAdminMenu();
+      if (window.loadMenu) window.loadMenu();
+      showToast('🗑️ Item deleted successfully');
+    } else {
+      throw new Error('Delete failed');
+    }
+  } catch (error) {
+    showToast('Delete failed', 'error');
+  }
+};
+
+window.toggleItemAvailability = async (itemId, isAvailable) => {
+  try {
+    const res = await fetch(`http://localhost:5001/api/menu/${itemId}`, {
+      method: 'PATCH',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ isAvailable })
+    });
+    
+    if (res.ok) {
+      showToast(isAvailable ? '✅ Item is now available' : '⏸️ Item is now hidden');
+      loadAdminMenu();
+      if (window.loadMenu) window.loadMenu();
+    } else {
+      throw new Error('Update failed');
+    }
+  } catch (error) {
+    showToast('Update failed', 'error');
+  }
+};
+
+async function updateMenuItem(itemId, form) {
+  const formData = {
+    name: document.getElementById('item-name').value.trim(),
+    price: parseFloat(document.getElementById('item-price').value),
+    category: document.getElementById('item-category').value,
+    size: document.getElementById('item-size')?.value.trim() || null,
+    description: document.getElementById('item-desc').value.trim() || null,
+    isAvailable: document.getElementById('item-available').checked
+  };
+
+  if (!formData.name || !formData.price || formData.price <= 0) {
+    showToast('Please fill name and valid price', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`http://localhost:5001/api/menu/${itemId}`, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    if (res.ok) {
+      loadAdminMenu();
+      if (window.loadMenu) window.loadMenu();
+      form.reset();
+      
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const cancelBtn = document.getElementById('cancel-edit-btn');
+      
+      if (submitBtn) {
+        submitBtn.textContent = '➕ Add Item';
+        delete submitBtn.dataset.editing;
+      }
+      
+      if (cancelBtn) cancelBtn.style.display = 'none';
+      
+      showToast('✅ Item updated successfully!');
+    } else {
+      const error = await res.json();
+      showToast(error.error || 'Update failed', 'error');
+    }
+  } catch (error) {
+    showToast('Update failed', 'error');
+  }
+}
+
 export function renderAdminTab() {
   return `
     <div id="admin-tab" class="tab-content" style="display: none;">
@@ -200,48 +547,7 @@ function renderMenuManagement() {
   `;
 }
 
-// Load dashboard stats
-async function loadDashboardStats() {
-  try {
-    const token = localStorage.getItem('token');
-    
-    // Fetch stats from backend
-    const [ordersRes, menuRes] = await Promise.all([
-      fetch('http://localhost:5001/api/admin/all', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }),
-      fetch('http://localhost:5001/api/menu', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-    ]);
-    
-    if (ordersRes.ok && menuRes.ok) {
-      const ordersData = await ordersRes.json();
-      const menuData = await menuRes.json();
-      
-      const orders = ordersData.data?.orders || [];
-      const menuItems = menuData || [];
-      
-      // Calculate stats
-      const today = new Date().toDateString();
-      const ordersToday = orders.filter(o => new Date(o.createdAt).toDateString() === today);
-      const revenueToday = ordersToday.reduce((sum, o) => sum + parseFloat(o.total || 0), 0);
-      const activeOrders = orders.filter(o => ['pending', 'accepted', 'preparing', 'ready'].includes(o.status));
-      
-      document.getElementById('stat-orders-today').textContent = ordersToday.length;
-      document.getElementById('stat-revenue-today').textContent = `$${revenueToday.toFixed(2)}`;
-      document.getElementById('stat-active-orders').textContent = activeOrders.length;
-      document.getElementById('stat-menu-items').textContent = menuItems.length;
-      
-      // Show recent orders
-      renderRecentOrders(orders.slice(0, 5));
-    }
-  } catch (error) {
-    console.error('Failed to load dashboard stats:', error);
-  }
-}
-
-function renderRecentOrders(orders) {
+ function renderRecentOrders(orders) {
   const container = document.getElementById('recent-orders-list');
   if (!container) return;
   
@@ -262,85 +568,6 @@ function renderRecentOrders(orders) {
       </div>
     </div>
   `).join('');
-}
-
-window.refreshDashboard = () => {
-  loadDashboardStats();
-  showToast('Dashboard refreshed!');
-};
-
-// Menu CRUD Operations
-export async function addMenuItem(e) {
-  e.preventDefault();
-  
-  if (!window.currentUser || window.currentUser.role !== 'admin') {
-    showToast('Admin access required!', 'error');
-    return;
-  }
-
-  const formData = {
-    name: document.getElementById('item-name').value.trim(),
-    price: parseFloat(document.getElementById('item-price').value),
-    category: document.getElementById('item-category').value,
-    size: document.getElementById('item-size')?.value.trim() || null,
-    description: document.getElementById('item-desc').value.trim() || null,
-    isAvailable: document.getElementById('item-available').checked
-  };
-
-  if (!formData.name || !formData.price || formData.price <= 0) {
-    showToast('Please fill name and valid price', 'error');
-    return;
-  }
-
-  try {
-    const res = await fetch('http://localhost:5001/api/menu', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify(formData)
-    });
-    
-    if (res.ok) {
-      if (window.loadMenu) window.loadMenu();
-      loadAdminMenu();
-      e.target.reset();
-      showToast('✅ Item added successfully!');
-    } else {
-      const error = await res.json();
-      showToast(error.error || 'Failed to add item', 'error');
-    }
-  } catch (error) {
-    showToast('Network error - try again', 'error');
-    console.error('Add menu item failed:', error);
-  }
-}
-
-export async function loadAdminMenu() {
-  if (!window.currentUser || window.currentUser.role !== 'admin') {
-    const grid = document.getElementById('admin-menu-grid');
-    if (grid) {
-      grid.innerHTML = '<div style="text-align: center; padding: 3rem; color: #dc3545;">🔐 Admin access required</div>';
-    }
-    return;
-  }
-
-  try {
-    const res = await fetch('http://localhost:5001/api/menu', {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-    });
-    
-    if (res.ok) {
-      const items = await res.json();
-      renderAdminMenuGrid(items);
-    }
-  } catch (error) {
-    const grid = document.getElementById('admin-menu-grid');
-    if (grid) {
-      grid.innerHTML = '<div style="text-align: center; padding: 3rem; color: #666;">⚠️ Failed to load menu</div>';
-    }
-  }
 }
 
 function renderAdminMenuGrid(items) {
@@ -373,155 +600,6 @@ function renderAdminMenuGrid(items) {
       </div>
     </div>
   `).join('');
-}
-
-// Global functions
-window.editMenuItem = async (itemId) => {
-  try {
-    const res = await fetch(`http://localhost:5001/api/menu/${itemId}`);
-    const item = await res.json();
-    
-    if (item) {
-      if (currentAdminSection !== 'menu') {
-        window.switchAdminSection('menu');
-      }
-      
-      setTimeout(() => {
-        document.getElementById('item-name').value = item.name;
-        document.getElementById('item-price').value = item.price;
-        document.getElementById('item-category').value = item.category;
-        document.getElementById('item-size').value = item.size || '';
-        document.getElementById('item-desc').value = item.description || '';
-        document.getElementById('item-available').checked = item.isAvailable;
-        
-        const submitBtn = document.querySelector('#menu-form button[type="submit"]');
-        const cancelBtn = document.getElementById('cancel-edit-btn');
-        
-        if (submitBtn) {
-          submitBtn.textContent = '💾 Update Item';
-          submitBtn.dataset.editing = itemId;
-        }
-        
-        if (cancelBtn) cancelBtn.style.display = 'block';
-        
-        document.getElementById('menu-form')?.scrollIntoView({ behavior: 'smooth' });
-        showToast(`Editing: ${item.name}`);
-      }, 100);
-    }
-  } catch (error) {
-    showToast('Failed to load item', 'error');
-  }
-};
-
-window.cancelEditMenuItem = () => {
-  const form = document.getElementById('menu-form');
-  if (form) {
-    form.reset();
-    
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const cancelBtn = document.getElementById('cancel-edit-btn');
-    
-    if (submitBtn) {
-      submitBtn.textContent = '➕ Add Item';
-      delete submitBtn.dataset.editing;
-    }
-    
-    if (cancelBtn) cancelBtn.style.display = 'none';
-  }
-};
-
-window.deleteMenuItem = async (itemId) => {
-  if (!confirm('Delete this menu item? This cannot be undone.')) return;
-  
-  try {
-    const res = await fetch(`http://localhost:5001/api/menu/${itemId}`, { 
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-    });
-    
-    if (res.ok) {
-      loadAdminMenu();
-      if (window.loadMenu) window.loadMenu();
-      showToast('🗑️ Item deleted successfully');
-    } else {
-      throw new Error('Delete failed');
-    }
-  } catch (error) {
-    showToast('Delete failed', 'error');
-  }
-};
-
-window.toggleItemAvailability = async (itemId, isAvailable) => {
-  try {
-    const res = await fetch(`http://localhost:5001/api/menu/${itemId}`, {
-      method: 'PATCH',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify({ isAvailable })
-    });
-    
-    if (res.ok) {
-      showToast(isAvailable ? '✅ Item is now available' : '⏸️ Item is now hidden');
-      loadAdminMenu();
-      if (window.loadMenu) window.loadMenu();
-    } else {
-      throw new Error('Update failed');
-    }
-  } catch (error) {
-    showToast('Update failed', 'error');
-  }
-};
-
-async function updateMenuItem(itemId, form) {
-  const formData = {
-    name: document.getElementById('item-name').value.trim(),
-    price: parseFloat(document.getElementById('item-price').value),
-    category: document.getElementById('item-category').value,
-    size: document.getElementById('item-size')?.value.trim() || null,
-    description: document.getElementById('item-desc').value.trim() || null,
-    isAvailable: document.getElementById('item-available').checked
-  };
-
-  if (!formData.name || !formData.price || formData.price <= 0) {
-    showToast('Please fill name and valid price', 'error');
-    return;
-  }
-
-  try {
-    const res = await fetch(`http://localhost:5001/api/menu/${itemId}`, {
-      method: 'PUT',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify(formData)
-    });
-    
-    if (res.ok) {
-      loadAdminMenu();
-      if (window.loadMenu) window.loadMenu();
-      form.reset();
-      
-      const submitBtn = form.querySelector('button[type="submit"]');
-      const cancelBtn = document.getElementById('cancel-edit-btn');
-      
-      if (submitBtn) {
-        submitBtn.textContent = '➕ Add Item';
-        delete submitBtn.dataset.editing;
-      }
-      
-      if (cancelBtn) cancelBtn.style.display = 'none';
-      
-      showToast('✅ Item updated successfully!');
-    } else {
-      const error = await res.json();
-      showToast(error.error || 'Update failed', 'error');
-    }
-  } catch (error) {
-    showToast('Update failed', 'error');
-  }
 }
 
 // Switch between admin sections
