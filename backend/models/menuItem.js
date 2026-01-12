@@ -31,7 +31,7 @@ const MenuItem = sequelize.define('MenuItem', {
       'wings',           
       'nuggets',         
       'calamari',        
-      'appetizer',       // ← ADDED: Mozzarella sticks, etc.
+      'appetizer',       
       'combo',
       'drink',
       'dessert',
@@ -45,5 +45,15 @@ const MenuItem = sequelize.define('MenuItem', {
     defaultValue: true
   }
 });
+
+// ✅ ASSOCIATIONS - CRITICAL for OrderItem eager loading
+MenuItem.associate = (models) => {
+  // MenuItem has many OrderItems (when items are ordered)
+  MenuItem.hasMany(models.OrderItem, {
+    foreignKey: 'menuItemId',
+    as: 'OrderItems',
+    onDelete: 'NO ACTION'
+  });
+};
 
 module.exports = MenuItem;

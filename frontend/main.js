@@ -1,14 +1,22 @@
-// main.js - FIXED IMPORTS
+// main.js - Updated with Checkout Integration
 import { renderCartDrawer, initCartDrawer } from './utils/cartDrawer.js';
 import { initGlobalFunctions } from './utils/cartStore.js';
 import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './components/menuRenderer.js';
-import { renderAdminTab, initAdminPanel } from './components/adminPanel.js';
-import { renderOrdersTab, loadOrders } from './components/ordersTab.js';  
-import { checkAuth, updateAuthUI } from './auth.js';
+import { renderAdminTab, initAdminPanel, loadAdminMenu } from './components/adminPanel.js';
+import { renderOrdersTab, initOrdersTab } from './components/ordersTab.js';
+import { renderCheckoutPage, initCheckout } from './components/checkout/CheckoutPage.js';
+import { renderOrderConfirmation, initOrderConfirmation } from './components/orders/OrderConfirmation.js';
+import { checkAuth, updateAuthUI } from './auth.js'; 
 
-document.title = 'Mike\'s NY Giant Pizza - Stage 4 Menu';
 
-// 🔧 DEFINE showTab BEFORE loadApp() to avoid timing issues
+document.title = 'Mike\'s NY Giant Pizza - Online Ordering';
+
+let currentOrder = null; // Store current order for confirmation page
+
+// Helper to toggle admin button visibility
+
+
+// 🔧 DEFINE showTab BEFORE loadApp()
 window.showTab = (tab) => {
   console.log('📑 Switching to tab:', tab);
   
@@ -17,7 +25,7 @@ window.showTab = (tab) => {
   if (activeBtn) activeBtn.classList.add('active');
   
   // Hide all tabs
-  ['menu-tab', 'orders-tab', 'admin-tab'].forEach(id => {
+  ['menu-tab', 'orders-tab', 'admin-tab', 'checkout-tab', 'confirmation-tab'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -34,7 +42,7 @@ window.showTab = (tab) => {
     const ordersTab = document.getElementById('orders-tab');
     if (ordersTab) {
       ordersTab.style.display = 'block';
-      loadOrders();
+      initOrdersTab(); // ✅ Changed from loadOrders()
     }
   }
   
@@ -42,20 +50,50 @@ window.showTab = (tab) => {
     const adminTab = document.getElementById('admin-tab');
     if (adminTab) {
       adminTab.style.display = 'block';
-      setTimeout(initAdminPanel, 50);
+      // ✅ Initialize admin panel properly
+      initAdminPanel();
     }
   }
+  
+  if (tab === 'checkout') {
+    const checkoutTab = document.getElementById('checkout-tab');
+    if (checkoutTab) {
+      checkoutTab.style.display = 'block';
+      checkoutTab.innerHTML = renderCheckoutPage();
+      initCheckout();
+    }
+  }
+  
+  if (tab === 'confirmation') {
+    const confirmationTab = document.getElementById('confirmation-tab');
+    if (confirmationTab) {
+      confirmationTab.style.display = 'block';
+      confirmationTab.innerHTML = renderOrderConfirmation(currentOrder);
+      initOrderConfirmation();
+    }
+  }
+};
+
+// Global function to navigate to checkout
+window.goToCheckout = () => {
+  console.log('🛒 Navigating to checkout...');
+  window.toggleCart?.(); // Close cart drawer
+  showTab('checkout');
+};
+
+// Global function to show order confirmation
+window.showOrderConfirmation = (order) => {
+  console.log('✅ Showing order confirmation...', order);
+  currentOrder = order;
+  showTab('confirmation');
 };
 
 function mainUI() {
   return `
     <div style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
       <header style="text-align: center; margin-bottom: 3rem;">
-        <h1 style="color: #ff6b35; font-size: 3rem; margin: 0;">🍕 Mike's NY Giant Pizza</h1>
-        <div style="background: #d4edda; color: #155724; padding: 1rem; border-radius: 12px; margin-top: 1rem;">
-          <h2>✅ STAGE 4: Menu Management Complete!</h2>
-          <p>Admin CRUD | Public menu | JWT protected</p>
-        </div>
+        <h1 style="color: #ff6b35; font-size: 3rem; margin: 0; cursor: pointer;" onclick="showTab('menu')">🍕 Mike's NY Giant Pizza</h1>
+        <p style="color: #666; margin: 0.5rem 0 0; font-size: 1.1rem;">Authentic New York Style Pizza</p>
       </header>
 
       <!-- Auth Status -->
@@ -66,19 +104,22 @@ function mainUI() {
 
       <!-- Tabs -->
       <div style="display: flex; gap: 1rem; margin-bottom: 2rem; justify-content: center; flex-wrap: wrap;" id="tabs">
-        <button onclick="showTab('menu')" class="tab-btn active">🍕 Public Menu</button>
+        <button onclick="showTab('menu')" class="tab-btn active">🍕 Menu</button>
         <button onclick="showTab('orders')" class="tab-btn">📋 My Orders</button>
+        <button id="admin-tab-btn" onclick="showTab('admin')" class="tab-btn" style="display: none;">⚙️ Admin</button>
       </div>
 
-      <!-- DYNAMIC TABS -->
+      <!-- Tab Content -->
       <div id="menu-tab" style="display: block;">${renderMenuTab()}</div>
+      <div id="checkout-tab" style="display: none;"></div>
+      <div id="confirmation-tab" style="display: none;"></div>
       ${renderOrdersTab()}
       ${renderAdminTab()}
 
       <!-- Cart -->
       ${renderCartDrawer()}
 
-      <!-- ✅ COMPLETE AUTH MODAL -->
+      <!-- Auth Modal -->
       <div id="auth-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; backdrop-filter: blur(2px);">
         <div style="background: white; margin: 10% auto; padding: 2rem; border-radius: 12px; max-width: 400px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
           <button onclick="hideAuth()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.2s;">×</button>
@@ -98,24 +139,85 @@ function mainUI() {
 
       <!-- STYLES -->
       <style>
-        .tab-btn { padding: 1rem 2rem; background: #f8f9fa; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.3s; }
-        .tab-btn.active, .tab-btn:hover { background: #ff6b35; color: white; }
-        .tab-content, #menu-tab { animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .input-style { 
-          width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #ddd; 
-          border-radius: 6px; box-sizing: border-box; font-size: 1rem; 
+        .tab-btn { 
+          padding: 1rem 2rem; 
+          background: #f8f9fa; 
+          border: none; 
+          border-radius: 8px; 
+          cursor: pointer; 
+          font-size: 1rem; 
+          transition: all 0.3s; 
+          font-weight: 500;
         }
-        .input-style:focus { outline: none; border-color: #ff6b35; box-shadow: 0 0 0 3px rgba(255,107,53,0.1); }
-        .menu-card { border: 1px solid #ddd; border-radius: 12px; padding: 1.5rem; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: transform 0.2s; }
-        .menu-card:hover { transform: translateY(-4px); }
-        .size-selector { width: 100%; padding: 0.75rem; border: 2px solid #ff6b35; border-radius: 8px; background: white; font-size: 1rem; font-weight: 500; }
-        .add-to-cart-btn { transition: background 0.3s; width: 100%; background: #ff6b35; color: white; border: none; padding: 1rem; border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
-        .add-to-cart-btn:hover { background: #e55a2b !important; transform: translateY(-2px); }
+        .tab-btn.active, .tab-btn:hover { 
+          background: #ff6b35; 
+          color: white; 
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        }
+        .tab-content { 
+          animation: fadeIn 0.3s; 
+        }
+        @keyframes fadeIn { 
+          from { opacity: 0; transform: translateY(10px); } 
+          to { opacity: 1; transform: translateY(0); } 
+        }
+        .input-style { 
+          width: 100%; 
+          padding: 0.75rem; 
+          margin-bottom: 1rem; 
+          border: 1px solid #ddd; 
+          border-radius: 6px; 
+          box-sizing: border-box; 
+          font-size: 1rem; 
+        }
+        .input-style:focus { 
+          outline: none; 
+          border-color: #ff6b35; 
+          box-shadow: 0 0 0 3px rgba(255,107,53,0.1); 
+        }
+        .menu-card { 
+          border: 1px solid #ddd; 
+          border-radius: 12px; 
+          padding: 1.5rem; 
+          background: white; 
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+          transition: transform 0.2s; 
+        }
+        .menu-card:hover { 
+          transform: translateY(-4px); 
+        }
+        .size-selector { 
+          width: 100%; 
+          padding: 0.75rem; 
+          border: 2px solid #ff6b35; 
+          border-radius: 8px; 
+          background: white; 
+          font-size: 1rem; 
+          font-weight: 500; 
+        }
+        .add-to-cart-btn { 
+          transition: background 0.3s; 
+          width: 100%; 
+          background: #ff6b35; 
+          color: white; 
+          border: none; 
+          padding: 1rem; 
+          border-radius: 8px; 
+          font-size: 1.1rem; 
+          cursor: pointer; 
+        }
+        .add-to-cart-btn:hover { 
+          background: #e55a2b !important; 
+          transform: translateY(-2px); 
+        }
       </style>
     </div>
   `;
 }
+
+
+
 
 async function loadApp() {
   console.log('🚀 Starting app load...');
@@ -124,24 +226,53 @@ async function loadApp() {
   document.getElementById('app').innerHTML = mainUI();
   console.log('✅ HTML rendered');
   
-  // 2. Initialize global functions (must happen BEFORE loadMenu)
+  // 2. Initialize global functions
+  
   initMenuGlobalFunctions();
   initCartDrawer();
   initGlobalFunctions();
   console.log('✅ Global functions initialized');
   
-  // 3. Load menu data - this will populate the menu-grid container
+  // 3. Load menu dataS
   console.log('🔄 Loading menu...');
   await loadMenu();
   console.log('✅ Menu loaded');
   
-  // 4. Check authentication
-  await checkAuth();
+ // 4. Check authentication SAFELY
+try {
+  if (typeof checkAuth === 'function') {
+    console.log('🔍 checkAuth available');
+    await checkAuth();
+  } else {
+    console.warn('❌ checkAuth not imported - skipping');
+  }
+  await updateAuthUI();
+} catch (error) {
+  console.warn('⚠️ Auth check failed:', error.message);
+}
+console.log('🔍 AFTER AUTH - window.currentUser:', window.currentUser);
+
   
-  // 5. Menu tab is already visible by default (display: block in mainUI)
-  // No need to call showTab('menu') - it's already showing!
+  
+  // 6. Update cart drawer
+  updateCartDrawerWithCheckout();
   
   console.log('✅ App fully loaded!');
+}
+
+// Add checkout button to cart drawer
+function updateCartDrawerWithCheckout() {
+  const checkoutContainer = document.getElementById('checkout-btn');
+  if (checkoutContainer) {
+    checkoutContainer.innerHTML = `
+      <button 
+        onclick="window.goToCheckout()" 
+        style="width: 100%; padding: 1rem; background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; margin-top: 1rem;"
+      >
+        🛒 Proceed to Checkout
+      </button>
+    `;
+  }
 }
 
 // Start the app
