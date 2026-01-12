@@ -172,6 +172,8 @@ export function renderCheckoutPage() {
               `).join('')}
             </div>
 
+
+
             <!-- Price Breakdown -->
             <div style="margin-bottom: 1rem;">
               <div class="price-row">
@@ -384,29 +386,35 @@ export function initCheckout() {
       const deliveryFee = checkoutData.orderType === 'delivery' ? 3.99 : 0;
       const total = subtotal + tax + deliveryFee;
 
-      // ✅ BUILD ORDER DATA WITH CUSTOMER INFO
       const orderData = {
-        orderType: checkoutData.orderType,
-        customerName: checkoutData.customerName.trim(),      // ✅ Send this
-        customerEmail: checkoutData.customerEmail.trim(),    // ✅ Send this
-        customerPhone: checkoutData.customerPhone.trim(),    // ✅ Send this
-        deliveryAddress: checkoutData.orderType === 'delivery' ? checkoutData.deliveryAddress.trim() : null,
-        deliveryInstructions: checkoutData.deliveryInstructions.trim() || null,
-        paymentMethod: checkoutData.paymentMethod,
-        items: cart.map(item => ({
-          menuItemId: item.id,
-          name: item.name,
-          size: item.size || null,
-          price: item.price,
-          quantity: item.quantity,
-          specialInstructions: item.specialInstructions || null
-        })),
-        subtotal: parseFloat(subtotal.toFixed(2)),
-        tax: parseFloat(tax.toFixed(2)),
-        deliveryFee: parseFloat(deliveryFee.toFixed(2)),
-        total: parseFloat(total.toFixed(2)),
-        estimatedTime: 35
-      };
+  orderType: checkoutData.orderType,
+  customerName: checkoutData.customerName.trim(),
+  customerEmail: checkoutData.customerEmail.trim(),
+  customerPhone: checkoutData.customerPhone.trim(),
+  deliveryAddress: checkoutData.orderType === 'delivery' ? checkoutData.deliveryAddress?.trim() : null,
+  deliveryInstructions: checkoutData.deliveryInstructions?.trim() || null,
+  paymentMethod: checkoutData.paymentMethod || 'cash',
+  
+  
+  paymentStatus: 'pending',
+  status: 'pending',
+  
+  items: cart.map(item => ({
+    menuItemId: item.id,
+    name: item.name,
+    size: item.size || null,
+    price: parseFloat(item.price),
+    quantity: parseInt(item.quantity),
+    specialInstructions: item.specialInstructions || null
+  })),
+  
+  subtotal: parseFloat(subtotal.toFixed(2)),
+  tax: parseFloat(tax.toFixed(2)),
+  deliveryFee: parseFloat(deliveryFee.toFixed(2)),
+  total: parseFloat(total.toFixed(2)),
+  estimatedTime: 35
+};
+
 
       console.log('📤 Sending order to backend:', orderData);
 

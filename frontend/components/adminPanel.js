@@ -207,7 +207,7 @@ async function loadDashboardStats() {
     
     // Fetch stats from backend
     const [ordersRes, menuRes] = await Promise.all([
-      fetch('http://localhost:5001/api/orders/admin/all', {
+      fetch('http://localhost:5001/api/admin/all', {
         headers: { 'Authorization': `Bearer ${token}` }
       }),
       fetch('http://localhost:5001/api/menu', {
