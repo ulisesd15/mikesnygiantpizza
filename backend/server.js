@@ -32,12 +32,23 @@ app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`);
   next();
 });
+const authRoutes = require('./routes/auth');
+console.log('authRoutes:', typeof authRoutes, authRoutes);
 
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/menu', require('./routes/menu'));
-app.use('/api/admin', require('./routes/admin'));
-app.use('/api/orders', require('./routes/orders'));
-app.use('/api/analytics', require('./routes/analytics'));
+const menuRoutes = require('./routes/menu');
+console.log('menuRoutes:', typeof menuRoutes, menuRoutes);
+
+const adminRoutes = require('./routes/admin');
+console.log('adminRoutes:', typeof adminRoutes, adminRoutes);
+
+const orderRoutes = require('./routes/orders');
+console.log('orderRoutes:', typeof orderRoutes, orderRoutes);
+
+app.use('/api/auth', authRoutes);
+app.use('/api/menu', menuRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/orders', orderRoutes);
+// app.use('/api/analytics', require('./routes/analytics'));
 
 // Your existing routes 👇
 app.get('/', (req, res) => {
@@ -111,3 +122,6 @@ app.get('/api/db-test', async (req, res) => {
     });
   }
 });
+
+
+
