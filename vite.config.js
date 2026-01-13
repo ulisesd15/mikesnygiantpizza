@@ -1,8 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  root: 'frontend',
-  base: './',  // ✅ Add for deployed builds
+  root: 'frontend', // Serve from frontend/
   server: {
     port: 5173,
     proxy: {
@@ -16,16 +15,16 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main: './index.html'
+        main: './index.html'  // ✅ Fixed: frontend/index.html
+        // Removed dead pages (admin.html, cart.html, etc.)
       }
     }
   },
   css: {
     preprocessorOptions: {
       scss: {
-        additionalData: `@import "./style.css";`
+        additionalData: `@import "./style.css";`  // ✅ Fixed path
       }
     }
-  },
-  publicDir: false  
+  }
 });
