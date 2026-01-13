@@ -19,7 +19,7 @@ const User = sequelize.define('User', {
   },
   password: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true, // ✅ CHANGED: Allow null for OAuth users
   },
   role: {
     type: DataTypes.ENUM('customer', 'admin'),
@@ -31,20 +31,35 @@ const User = sequelize.define('User', {
     allowNull: false
   },
   phone: DataTypes.STRING,
-  address: DataTypes.TEXT
+  address: DataTypes.TEXT,
+  // ✅ NEW FIELDS for OAuth
+  googleId: {
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: true
+  },
+  authProvider: {
+    type: DataTypes.ENUM('local', 'google'),
+    defaultValue: 'local',
+    allowNull: false
+  },
+  profilePicture: {
+    type: DataTypes.STRING,
+    allowNull: true
+  }
 }, {
   timestamps: true,
   hooks: {
-    // Automatically hash password before creating new user
     beforeCreate: async (user) => {
-      if (user.password) {
+      // ✅ UPDATED: Only hash password if it exists and user is not OAuth
+      if (user.password && user.authProvider === 'local') {
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(user.password, salt);
       }
     },
-    // Automatically hash password before updating if it changed
     beforeUpdate: async (user) => {
-      if (user.changed('password')) {
+      // ✅ UPDATED: Only hash password if it changed and user is local auth
+      if (user.changed('password') && user.password && user.authProvider === 'local') {
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(user.password, salt);
       }
@@ -52,12 +67,14 @@ const User = sequelize.define('User', {
   }
 });
 
-// Instance method to validate password during login
+// ✅ UPDATED: Handle OAuth users who don't have passwords
 User.prototype.validatePassword = async function(password) {
+  if (!this.password || this.authProvider !== 'local') {
+    return false;
+  }
   return await bcrypt.compare(password, this.password);
 };
 
-// Instance method to check if user is admin
 User.prototype.isAdmin = function() {
   return this.role === 'admin';
 };
