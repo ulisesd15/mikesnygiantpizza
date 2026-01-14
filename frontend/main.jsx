@@ -1,12 +1,12 @@
 // main.js - Updated with Google OAuth and Checkout Integration
 import { renderCartDrawer, initCartDrawer } from './utils/cartDrawer.js';
 import { initGlobalFunctions } from './utils/cartStore.js';
-import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './components/menuRenderer.js';
-import { renderAdminTab, initAdminPanel, loadAdminMenu } from './components/adminPanel.js';
-import { renderOrdersTab, initOrdersTab } from './components/ordersTab.js';
-import { renderCheckoutPage, initCheckout } from './components/checkout/CheckoutPage.js';
-import { renderOrderConfirmation, initOrderConfirmation } from './components/orders/OrderConfirmation.js';
-import { checkAuth, updateAuthUI } from './auth.js'; 
+import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './components/menuRenderer.jsx';
+import { renderAdminTab, initAdminPanel, loadAdminMenu } from './components/adminPanel.jsx';
+import { renderOrdersTab, initOrdersTab } from './components/ordersTab.jsx';
+import { renderCheckoutPage, initCheckout } from './components/checkout/CheckoutPage.jsx';
+import { renderOrderConfirmation, initOrderConfirmation } from './components/orders/OrderConfirmation.jsx';
+import { checkAuth, updateAuthUI } from './auth.jsx'; 
 
 
 

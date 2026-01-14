@@ -1,6 +1,8 @@
 // frontend/components/adminPanel.js
+import { useState } from 'react';
 import { showToast } from '../utils/cartStore.js';
-import { renderOrdersPanel, initOrdersPanel } from './admin/OrdersPanel.js';
+import { renderOrdersPanel, initOrdersPanel } from './admin/OrdersPanel.jsx';
+import { UsersPanel } from './admin/UsersPanel.jsx';
 
 let currentAdminSection = 'dashboard'; // Default to dashboard
 
@@ -21,8 +23,8 @@ async function loadDashboardStats() {
     }
     // Fetch stats from backend
     // ✅ FIXED: Changed endpoint from /api/orders/all to /api/admin/all
-     const [ordersRes, menuRes] = await Promise.all([
-      fetch('http://localhost:5001/api/admin/all', {
+     const [statsRes, menuRes] = await Promise.all([
+      fetch('http://localhost:5001/api/admin/stats', {
         method: 'GET',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -498,6 +500,26 @@ function renderDashboard() {
   `;
 }
 
+function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState('users');
+  
+  return (
+    <div className="admin-dashboard">
+      <nav className="admin-nav">
+        <button onClick={() => setActiveTab('users')}>Users</button>
+        <button onClick={() => setActiveTab('orders')}>Orders</button>
+        {/* other tabs */}
+      </nav>
+      
+      <div className="admin-content">
+        {activeTab === 'users' && <UsersPanel />}
+        {activeTab === 'orders' && <OrdersPanel />}
+        {/* other panels */}
+      </div>
+    </div>
+  );
+}
+
 function renderMenuManagement() {
   return `
     <!-- Add/Edit Form -->
@@ -667,3 +689,5 @@ export function initAdminPanel() {
     loadAdminMenu();
   }
 }
+
+export default AdminDashboard;
