@@ -9,6 +9,9 @@ import { renderOrderConfirmation, initOrderConfirmation } from './components/ord
 import { checkAuth, updateAuthUI } from './auth.js'; 
 
 
+
+
+
 document.title = 'Mike\'s NY Giant Pizza - Online Ordering';
 
 let currentOrder = null; // Store current order for confirmation page

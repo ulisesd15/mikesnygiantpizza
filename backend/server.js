@@ -44,6 +44,13 @@ console.log('adminRoutes:', typeof adminRoutes, adminRoutes);
 const orderRoutes = require('./routes/orders');
 console.log('orderRoutes:', typeof orderRoutes, orderRoutes);
 
+// In backend/server.js, add:
+const analyticsRoutes = require('./routes/analytics');
+console.log('analyticsRoutes:', typeof analyticsRoutes, analyticsRoutes);
+
+
+
+app.use('/api/analytics', analyticsRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/admin', adminRoutes);
@@ -90,12 +97,12 @@ app.get('/api/db-reset', async (req, res) => {
 });
 
 app.listen(PORT, async () => {
-  console.log(`🍕 Backend listening on http://localhost:${PORT}`);
+
   try {
     // ✅ IMPROVED: Safe sync on startup
-    console.log('🔄 Syncing database...');
+
     await sequelize.sync({ alter: true }); // Safe: updates tables without data loss
-    console.log('✅ Database synced successfully!');
+
   } catch (err) {
     console.error('❌ Database sync failed:', err.message);
     console.error('\n⚠️  Troubleshooting:');
@@ -107,21 +114,7 @@ app.listen(PORT, async () => {
   }
 });
 
-// Test DB connection
-app.get('/api/db-test', async (req, res) => {
-  try {
-    await sequelize.authenticate();
-    res.json({ 
-      status: 'success', 
-      message: 'Database connected!' 
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      status: 'error', 
-      message: error.message 
-    });
-  }
-});
+
 
 
 
