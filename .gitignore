@@ -1,3 +1,14 @@
-node_modules
+
+node_modules/
 .env
-/backend/.env
+dist/
+backend/node_modules/
+backend/.env
+.DS_Store
+backend/.env
+.env
+*.env
+.env.*
+!.env.example
+backend/.env
+node_modules/

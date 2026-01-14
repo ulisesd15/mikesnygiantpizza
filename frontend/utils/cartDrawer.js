@@ -1,5 +1,5 @@
 // frontend/utils/cartDrawer.js
-import { initGlobalFunctions, updateCartCount } from '../utils/cartStore.js';
+import { initGlobalFunctions, updateCartCount } from './cartStore.js';
 
 export function renderCartDrawer() {
   return `
