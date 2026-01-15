@@ -8,7 +8,6 @@ let currentAdminSection = 'dashboard'; // Default to dashboard
 
 
 
-// Load dashboard stats
 async function loadDashboardStats() {
   try {
     const token = localStorage.getItem('token');
@@ -21,9 +20,8 @@ async function loadDashboardStats() {
       document.getElementById('stat-menu-items').textContent = '—';
       return;
     }
-    // Fetch stats from backend
-    // ✅ FIXED: Changed endpoint from /api/orders/all to /api/admin/all
-     const [statsRes, menuRes] = await Promise.all([
+
+    const [statsRes, menuRes] = await Promise.all([
       fetch('http://localhost:5001/api/admin/stats', {
         method: 'GET',
         headers: { 
@@ -40,11 +38,9 @@ async function loadDashboardStats() {
       })
     ]);
 
-    
-    // Better error handling
-    if (!ordersRes.ok) {
-      const error = await ordersRes.json();
-      throw new Error(`Orders API Error (${ordersRes.status}): ${error.error || 'Unknown error'}`);
+    if (!statsRes.ok) {
+      const error = await statsRes.json();
+      throw new Error(`Stats API Error (${statsRes.status}): ${error.error || 'Unknown error'}`);
     }
     
     if (!menuRes.ok) {
@@ -52,50 +48,33 @@ async function loadDashboardStats() {
       throw new Error(`Menu API Error (${menuRes.status}): ${error.error || 'Unknown error'}`);
     }
     
-    const ordersData = await ordersRes.json();
+    const statsData = await statsRes.json();
     const menuData = await menuRes.json();
     
-    console.log('✅ Orders data received:', ordersData);
+    console.log('✅ Stats data received:', statsData);
     console.log('✅ Menu data received:', menuData);
     
-    // Flexible data extraction
-    const orders = ordersData.data?.orders || ordersData.orders || [];
+    // ✅ FIXED: Correct path to data
+    const stats = statsData.data.orders || statsData.data;
     const menuItems = menuData.data || menuData || [];
     
-    // Calculate stats
-    const today = new Date().toDateString();
-    const ordersToday = orders.filter(o => {
-      try {
-        return new Date(o.createdAt).toDateString() === today;
-      } catch (e) {
-        return false;
-      }
-    });
-    
-    const revenueToday = ordersToday.reduce((sum, o) => {
-      const total = parseFloat(o.total) || 0;
-      return sum + total;
-    }, 0);
-    
-    const activeOrders = orders.filter(o => 
-      ['pending', 'accepted', 'preparing', 'ready'].includes(o.status)
-    );
+    // ✅ FIXED: Correct property paths
+    const ordersToday = stats.today || stats.ordersToday || 0;
+    const revenueToday = parseFloat(stats.revenueToday || 0).toFixed(2);
+    const activeOrders = stats.active || stats.activeOrders || 0;
     
     console.log('📈 Stats:', { 
-      ordersToday: ordersToday.length, 
+      ordersToday, 
       revenueToday, 
-      activeOrders: activeOrders.length, 
+      activeOrders, 
       menuItems: menuItems.length 
     });
     
     // Update UI
-    document.getElementById('stat-orders-today').textContent = ordersToday.length;
-    document.getElementById('stat-revenue-today').textContent = `$${revenueToday.toFixed(2)}`;
-    document.getElementById('stat-active-orders').textContent = activeOrders.length;
+    document.getElementById('stat-orders-today').textContent = ordersToday;
+    document.getElementById('stat-revenue-today').textContent = `$${revenueToday}`;
+    document.getElementById('stat-active-orders').textContent = activeOrders;
     document.getElementById('stat-menu-items').textContent = menuItems.length;
-    
-    // Show recent orders
-    renderRecentOrders(orders.slice(0, 5));
     
     console.log('✅ Dashboard stats loaded successfully');
     
@@ -107,6 +86,8 @@ async function loadDashboardStats() {
     document.getElementById('stat-menu-items').textContent = '⚠️';
   }
 }
+
+
 
 window.refreshDashboard = () => {
   loadDashboardStats();

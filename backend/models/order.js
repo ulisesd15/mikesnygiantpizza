@@ -109,7 +109,7 @@ const Order = sequelize.define('Order', {
   }
 });
 
-// ✅ ASSOCIATIONS
+// ASSOCIATIONS
 Order.associate = (models) => {
   Order.belongsTo(models.User, {
     foreignKey: 'userId',

@@ -67,7 +67,7 @@ const User = sequelize.define('User', {
   }
 });
 
-// ✅ UPDATED: Handle OAuth users who don't have passwords
+
 User.prototype.validatePassword = async function(password) {
   if (!this.password || this.authProvider !== 'local') {
     return false;

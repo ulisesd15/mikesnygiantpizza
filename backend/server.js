@@ -29,24 +29,17 @@ app.use((req, res, next) => {
   }
 });
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`);
   next();
 });
+
+
+
 const authRoutes = require('./routes/auth');
-console.log('authRoutes:', typeof authRoutes, authRoutes);
-
 const menuRoutes = require('./routes/menu');
-console.log('menuRoutes:', typeof menuRoutes, menuRoutes);
-
 const adminRoutes = require('./routes/admin');
-console.log('adminRoutes:', typeof adminRoutes, adminRoutes);
-
 const orderRoutes = require('./routes/orders');
-console.log('orderRoutes:', typeof orderRoutes, orderRoutes);
-
-// In backend/server.js, add:
 const analyticsRoutes = require('./routes/analytics');
-console.log('analyticsRoutes:', typeof analyticsRoutes, analyticsRoutes);
+
 
 
 

@@ -1,27 +1,26 @@
 // backend/routes/admin.js
 const express = require('express');
 const router = express.Router();
-const { auth, adminAuth } = require('../middleware/auth');
+const { authenticate, adminAuth } = require('../middleware/auth');
 const { User, Order, MenuItem, Ingredient, OrderItem } = require('../models');
 const { Op, fn, col } = require('sequelize');
 
-// Protect ALL admin routes with both middleware
-router.use(auth);      // First authenticate
-router.use(adminAuth); // Then check if admin
+
 
 // =====================================================
 // DASHBOARD STATS
 // =====================================================
 
-// GET /api/admin/stats - Dashboard statistics
-router.get('/stats', async (req, res) => {
+// GET /api/admin/stats - Dashboard statistics (ADMIN ONLY)
+router.get('/stats', authenticate, adminAuth, async (req, res) => {
   try {
+    console.log('📊 Getting admin stats for:', req.user.email);
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Today's orders count
     const todayOrders = await Order.count({
       where: {
         createdAt: {
@@ -31,7 +30,6 @@ router.get('/stats', async (req, res) => {
       }
     });
 
-    // Today's revenue (exclude cancelled orders)
     const todayRevenue = await Order.sum('total', {
       where: {
         createdAt: {
@@ -42,12 +40,10 @@ router.get('/stats', async (req, res) => {
       }
     }) || 0;
 
-    // Pending orders count
     const pendingOrders = await Order.count({
       where: { status: 'pending' }
     });
 
-    // Active orders (pending, accepted, preparing, ready)
     const activeOrders = await Order.count({
       where: { 
         status: { 
@@ -56,68 +52,16 @@ router.get('/stats', async (req, res) => {
       }
     });
 
-    // Total customers
-    const totalUsers = await User.count({
-      where: { role: 'customer' }
-    });
-
-    // Total admins
-    const totalAdmins = await User.count({
-      where: { role: 'admin' }
-    });
-
-    // Recent orders (last 10)
-    const recentOrders = await Order.findAll({
-      limit: 10,
-      order: [['createdAt', 'DESC']],
-      include: [
-        {
-          model: User,
-          attributes: ['id', 'name', 'email', 'phone']
-        },
-        {
-          model: OrderItem,
-          attributes: ['id', 'name', 'quantity', 'price']
-        }
-      ]
-    });
-
-    // This week's stats
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - 7);
-    
-    const weekOrders = await Order.count({
-      where: {
-        createdAt: { [Op.gte]: weekStart }
-      }
-    });
-
-    const weekRevenue = await Order.sum('total', {
-      where: {
-        createdAt: { [Op.gte]: weekStart },
-        status: { [Op.ne]: 'cancelled' }
-      }
-    }) || 0;
-
+    // ✅ EXACT FORMAT FRONTEND EXPECTS
     res.json({
       success: true,
       data: {
-        today: {
-          orders: todayOrders,
-          revenue: parseFloat(todayRevenue).toFixed(2)
-        },
-        week: {
-          orders: weekOrders,
-          revenue: parseFloat(weekRevenue).toFixed(2)
-        },
-        pending: pendingOrders,
-        active: activeOrders,
-        users: {
-          customers: totalUsers,
-          admins: totalAdmins,
-          total: totalUsers + totalAdmins
-        },
-        recentOrders
+        orders: {
+          today: todayOrders,
+          revenueToday: parseFloat(todayRevenue).toFixed(2),
+          active: activeOrders,
+          pending: pendingOrders
+        }
       }
     });
 
@@ -130,13 +74,17 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+
+
 // =====================================================
 // GET ALL ORDERS
 // =====================================================
 
-// GET /api/admin/all - Get all orders (admin only)
-router.get('/all', async (req, res) => {
+// GET /api/orders/admin/all - Get all orders (admin only)
+router.get('/admin/all', authenticate, adminAuth, async (req, res) => {
   try {
+    console.log('📋 Getting all orders for admin:', req.user.email);
+    
     const { 
       page = 1, 
       limit = 20, 
@@ -170,35 +118,27 @@ router.get('/all', async (req, res) => {
       }
     }
 
-    const { count, rows: orders } = await Order.findAndCountAll({
-      where: whereClause,
-      include: [
-        {
-          model: User,
-          attributes: ['id', 'name', 'email', 'phone']
-        },
-        {
-          model: OrderItem,
-          attributes: ['id', 'name', 'size', 'quantity', 'price']
-        }
-      ],
-      order: [['createdAt', 'DESC']],
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
+ const { count, rows: orders } = await Order.findAndCountAll({
+  include: [
+    { model: User, as: 'User' }
+  ],
+  limit: parseInt(limit),
+  offset: (parseInt(page) - 1) * parseInt(limit),
+  order: [['createdAt', 'DESC']]
+});
 
-    res.json({
-      success: true,
-      data: {
-        orders,
-        pagination: {
-          total: count,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(count / limit)
-        }
-      }
-    });
+res.json({
+  success: true,
+  data: {
+    orders,
+    pagination: {
+      total: count,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(count / limit)
+    }
+  }
+});
 
   } catch (error) {
     console.error('❌ Error fetching orders:', error);
@@ -208,6 +148,7 @@ router.get('/all', async (req, res) => {
     });
   }
 });
+
 
 // =====================================================
 // USER MANAGEMENT

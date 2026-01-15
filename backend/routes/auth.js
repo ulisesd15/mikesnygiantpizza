@@ -10,7 +10,176 @@ const { Op } = require('sequelize');
 // ✅ Initialize Google OAuth Client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// REGISTER
+// ============================================
+// 🔐 HELPER FUNCTIONS
+// ============================================
+function generateToken(user) {
+  return jwt.sign(
+    { 
+      id: user.id, 
+      email: user.email,
+      role: user.role 
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+}
+
+function formatUserResponse(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    phone: user.phone,
+    address: user.address,
+    role: user.role,
+    authProvider: user.authProvider,
+    profilePicture: user.profilePicture
+  };
+}
+
+// ============================================
+// 📝 REGISTER (Local Auth)
+// ============================================
+router.post('/register', async (req, res) => {
+  try {
+    const { email, password, name, phone } = req.body;
+
+    // Validation
+    if (!email || !password || !name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email, password, and name are required'
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email format'
+      });
+    }
+
+    // Validate password strength
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 6 characters long'
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        error: 'Email already registered'
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
+    const user = await User.create({
+      email,
+      password: hashedPassword,
+      name,
+      phone: phone || null,
+      role: 'customer',
+      authProvider: 'local'
+    });
+
+    console.log('✅ New user registered:', email);
+
+    // Generate token
+    const token = generateToken(user);
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful',
+      token,
+      user: formatUserResponse(user)
+    });
+
+  } catch (error) {
+    console.error('❌ Registration error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Registration failed'
+    });
+  }
+});
+
+// ============================================
+// 🔑 LOGIN (Local Auth)
+// ============================================
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email and password are required'
+      });
+    }
+
+    // Find user
+    const user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid email or password'
+      });
+    }
+
+    // Check if user is OAuth-only (no password set)
+    if (user.authProvider === 'google' && !user.password) {
+      return res.status(400).json({
+        success: false,
+        error: 'This account uses Google Sign-In. Please login with Google.'
+      });
+    }
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password);
+
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid email or password'
+      });
+    }
+
+    console.log('✅ User logged in:', email);
+
+    // Generate token
+    const token = generateToken(user);
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      token,
+      user: formatUserResponse(user)
+    });
+
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Login failed'
+    });
+  }
+});
+
+// ============================================
+// 🔐 GOOGLE OAUTH LOGIN
+// ============================================
 router.post('/google', async (req, res) => {
   try {
     const { googleToken } = req.body;
@@ -247,7 +416,7 @@ router.put('/change-password', async (req, res) => {
     }
 
     // Validate current password
-    const isValid = await user.validatePassword(currentPassword);
+    const isValid = await bcrypt.compare(currentPassword, user.password);
     if (!isValid) {
       return res.status(401).json({
         success: false,
@@ -263,8 +432,8 @@ router.put('/change-password', async (req, res) => {
       });
     }
 
-    // Update password (will be hashed by beforeUpdate hook)
-    user.password = newPassword;
+    // Hash and update password
+    user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
 
     console.log('✅ Password changed for:', user.email);
