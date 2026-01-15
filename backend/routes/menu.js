@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { MenuItem } = require('../models');
-const { auth, adminAuth } = require('../middleware/auth');
+const { authenticate, adminAuth } = require('../middleware/auth');
 
 // GET all menu items (public)
 router.get('/', async (req, res) => {
@@ -24,13 +24,20 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.patch('/:id', async (req, res) => {
-  const [updated] = await Menu.update(req.body, { where: { id: req.params.id } });
-  res.json({ message: 'Updated' });
+// PATCH single item (admin only)
+router.patch('/:id', authenticate, adminAuth, async (req, res) => {
+  try {
+    const item = await MenuItem.findByPk(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Item not found' });
+    await item.update(req.body);
+    res.json({ message: 'Updated', item });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // CREATE (admin only)
-router.post('/', auth, adminAuth, async (req, res) => {
+router.post('/', authenticate, adminAuth, async (req, res) => {
   try {
     const item = await MenuItem.create(req.body);
     res.status(201).json(item);
@@ -40,7 +47,7 @@ router.post('/', auth, adminAuth, async (req, res) => {
 });
 
 // UPDATE (admin only)
-router.put('/:id', auth, adminAuth, async (req, res) => {
+router.put('/:id', authenticate, adminAuth, async (req, res) => {
   try {
     const item = await MenuItem.findByPk(req.params.id);
     if (!item) return res.status(404).json({ error: 'Item not found' });
@@ -52,7 +59,7 @@ router.put('/:id', auth, adminAuth, async (req, res) => {
 });
 
 // DELETE (admin only)
-router.delete('/:id', auth, adminAuth, async (req, res) => {
+router.delete('/:id', authenticate, adminAuth, async (req, res) => {
   try {
     const item = await MenuItem.findByPk(req.params.id);
     if (!item) return res.status(404).json({ error: 'Item not found' });
@@ -63,42 +70,4 @@ router.delete('/:id', auth, adminAuth, async (req, res) => {
   }
 });
 
-//Orders
-// Add to your API routes file (e.g. server.js)
-router.post('/api/orders', async (req, res) => {
-  try {
-    const order = {
-      id: Date.now().toString(), // Simple ID for now
-      ...req.body,
-      userId: req.user?.id || 'guest', // From JWT if logged in
-      createdAt: new Date()
-    };
-    
-    // Save to DB/file/localStorage - example with simple array:
-    const orders = JSON.parse(fs.readFileSync('./orders.json', 'utf8')) || [];
-    orders.push(order);
-    fs.writeFileSync('./orders.json', JSON.stringify(orders, null, 2));
-    
-    res.json(order);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create order' });
-  }
-});
-
-router.get('/api/orders', async (req, res) => {
-  try {
-    const orders = JSON.parse(fs.readFileSync('./orders.json', 'utf8')) || [];
-    // Filter by user if logged in, or show last 10 for demo
-    const userOrders = req.user ? orders.filter(o => o.userId === req.user.id) : orders.slice(-10);
-    res.json(userOrders);
-  } catch (error) {
-    res.json([]);
-  }
-});
-
-
-
-
-
-
-module.exports = router;
+module.exports = router;  // ✅ EXPORT THE ROUTER, NOT THE MIDDLEWARE!

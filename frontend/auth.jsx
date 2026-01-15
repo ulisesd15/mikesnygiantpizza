@@ -1,12 +1,24 @@
 // frontend/auth.js - CLIENT-SIDE auth with Google OAuth
 import { showToast } from './utils/cartStore.js'; 
 
-// ✅ ADD THIS MISSING FUNCTION
 export async function checkAuth() {
   const token = localStorage.getItem('token');
+  const savedUser = localStorage.getItem('user');
   
   if (token) {
     try {
+      // ✅ If user data exists in localStorage, use it immediately
+      if (savedUser) {
+        try {
+          window.currentUser = JSON.parse(savedUser);
+          updateAuthUI();
+          console.log('✅ Loaded user from localStorage:', window.currentUser);
+        } catch (e) {
+          console.error('Failed to parse saved user:', e);
+        }
+      }
+      
+      // Then verify with backend
       const response = await fetch('http://localhost:5001/api/auth/profile', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -14,10 +26,16 @@ export async function checkAuth() {
       if (response.ok) {
         const data = await response.json();
         window.currentUser = data.user || data;
+        
+        // ✅ Update localStorage with fresh data
+        localStorage.setItem('user', JSON.stringify(window.currentUser));
+        
         updateAuthUI();
         return window.currentUser;
       } else {
+        // Token invalid - clear everything
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
         window.currentUser = null;
       }
     } catch (error) {
@@ -134,10 +152,13 @@ export async function handleAuthSubmit(isRegister = false) {
     console.log('📥 Response:', { status: res.status, data });
     
     if (res.ok) {
-      // ✅ SUCCESS
+      // ✅ SUCCESS - Save BOTH token and user
       localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user)); // ✅ ADDED
       window.currentUser = data.user;
+      
       console.log('✅ User authenticated:', window.currentUser);
+      console.log('✅ User saved to localStorage');
       
       await updateAuthUI();
       window.hideAuth();
@@ -156,10 +177,10 @@ export async function handleAuthSubmit(isRegister = false) {
       showToast(data.error || 'Authentication failed', 'error');
     }
   } catch (error) {
-    console.error('❌ Network error:', error);
-    showToast('Network error - check backend', 'error');
+    console.error('❌ Auth error:', error);
+    showToast('Authentication failed', 'error');
   }
-}
+} // ✅ ADDED MISSING CLOSING BRACE
 
 // ✅ GOOGLE OAUTH HANDLER
 export async function handleGoogleAuth(credential) {
@@ -176,8 +197,9 @@ export async function handleGoogleAuth(credential) {
     const data = await res.json();
     
     if (res.ok) {
-      // ✅ SUCCESS
+      // ✅ SUCCESS - Save BOTH token and user
       localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user)); // ✅ ADDED
       window.currentUser = data.user;
       console.log('✅ Google user authenticated:', window.currentUser);
       
@@ -192,6 +214,15 @@ export async function handleGoogleAuth(credential) {
     console.error('❌ Google auth error:', error);
     showToast('Google authentication failed', 'error');
   }
+}
+
+export function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.currentUser = null;
+  updateAuthUI();
+  showToast('Logged out successfully');
+  window.location.reload();
 }
 
 // ✅ GLOBAL FUNCTIONS (for onclick)
@@ -212,12 +243,7 @@ window.hideAuth = () => {
   if (passwordInput) passwordInput.value = '';
   console.log('🔒 Auth modal closed');
 };
-window.logout = () => {
-  localStorage.removeItem('token');
-  window.currentUser = null;
-  updateAuthUI();
-  showToast('Logged out successfully');
-};
+window.logout = logout; // ✅ FIXED: Use the actual logout function
 window.showForgotPassword = () => showToast('Contact Mike for password reset! 📞', 'info');
 
 // ✅ CLOSE MODAL ON OUTSIDE CLICK

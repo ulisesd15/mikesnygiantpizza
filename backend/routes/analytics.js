@@ -1,12 +1,12 @@
 // backend/routes/analytics.js
 const express = require('express');
 const router = express.Router();
-const { auth, adminAuth } = require('../middleware/auth');
+const { authenticate, adminAuth } = require('../middleware/auth');
 const { Order, OrderItem, MenuItem, User } = require('../models');
 const { Op, fn, col } = require('sequelize');
 
 // Protect all analytics routes (Admin only)
-router.use(auth);
+router.use(authenticate);
 router.use(adminAuth);
 
 // GET /api/analytics/summary - Today's summary
