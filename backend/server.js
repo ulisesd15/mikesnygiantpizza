@@ -20,7 +20,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') {
     res.sendStatus(200);
@@ -39,6 +39,7 @@ const menuRoutes = require('./routes/menu');
 const adminRoutes = require('./routes/admin');
 const orderRoutes = require('./routes/orders');
 const analyticsRoutes = require('./routes/analytics');
+const inventoryRoutes = require('./routes/inventory'); // ✅ NEW
 
 
 
@@ -48,6 +49,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/inventory', inventoryRoutes); // ✅ NEW
 // app.use('/api/analytics', require('./routes/analytics'));
 
 // Your existing routes 👇
