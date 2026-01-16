@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { auth, adminAuth } = require('../middleware/auth');
-const { Ingredient } = require('../models');
+const { Ingredient, sequelize } = require('../models'); // ✅ FIXED: Added sequelize import
 const { Op } = require('sequelize');
 
 // Protect ALL inventory routes - admin only
@@ -18,19 +18,32 @@ router.get('/', async (req, res) => {
 
     const whereClause = {};
     
-    // Search by name
+    // Search by name (MySQL compatible)
     if (search) {
       whereClause.name = {
-        [Op.iLike]: `%${search}%`
+        [Op.like]: `%${search}%` // ✅ FIXED: Changed from iLike to like for MySQL
       };
     }
     
     // Filter low stock items
     if (lowStock === 'true') {
-      whereClause[Op.or] = [
-        { currentStock: { [Op.lte]: sequelize.col('reorderLevel') } },
-        { currentStock: 0 }
-      ];
+      // ✅ FIXED: Use raw SQL comparison instead of sequelize.col for better compatibility
+      const allIngredients = await Ingredient.findAll();
+      const lowStockIngredients = allIngredients.filter(ing => ing.currentStock <= ing.reorderLevel);
+      
+      return res.json({
+        success: true,
+        data: {
+          ingredients: lowStockIngredients.slice(offset, offset + parseInt(limit)),
+          lowStockCount: lowStockIngredients.length,
+          pagination: {
+            total: lowStockIngredients.length,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            totalPages: Math.ceil(lowStockIngredients.length / limit)
+          }
+        }
+      });
     }
 
     const { count, rows: ingredients } = await Ingredient.findAndCountAll({
@@ -41,14 +54,8 @@ router.get('/', async (req, res) => {
     });
 
     // Calculate low stock count
-    const lowStockCount = await Ingredient.count({
-      where: {
-        [Op.or]: [
-          { currentStock: { [Op.lte]: sequelize.col('reorderLevel') } },
-          { currentStock: 0 }
-        ]
-      }
-    });
+    const allIngredients = await Ingredient.findAll();
+    const lowStockCount = allIngredients.filter(ing => ing.currentStock <= ing.reorderLevel).length;
 
     res.json({
       success: true,
@@ -78,15 +85,12 @@ router.get('/', async (req, res) => {
 // =====================================================
 router.get('/low-stock', async (req, res) => {
   try {
-    const lowStockItems = await Ingredient.findAll({
-      where: {
-        [Op.or]: [
-          { currentStock: { [Op.lte]: sequelize.col('reorderLevel') } },
-          { currentStock: 0 }
-        ]
-      },
+    // ✅ FIXED: Fetch all and filter in JavaScript for MySQL compatibility
+    const allIngredients = await Ingredient.findAll({
       order: [['currentStock', 'ASC']]
     });
+    
+    const lowStockItems = allIngredients.filter(ing => ing.currentStock <= ing.reorderLevel);
 
     res.json({
       success: true,
