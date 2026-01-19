@@ -1,5 +1,7 @@
 // frontend/components/admin/OrdersPanel.jsx
 
+import './OrdersPanel.css';
+
 let orders = [];
 let currentOrderTab = 'new';
 let refreshInterval = null;
