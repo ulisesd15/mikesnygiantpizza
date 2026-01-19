@@ -257,6 +257,8 @@ router.get('/', authenticate, async (req, res) => {
 // GET /api/orders/:id - Get single order by ID
 router.get('/:id', authenticate, async (req, res) => {
   try {
+    console.log('🔍 Getting order:', req.params.id, 'by user:', req.user.email, 'role:', req.user.role);
+    
     const order = await Order.findByPk(req.params.id, {
       include: [
         {
@@ -272,6 +274,7 @@ router.get('/:id', authenticate, async (req, res) => {
     });
 
     if (!order) {
+      console.log('❌ Order not found:', req.params.id);
       return res.status(404).json({ 
         success: false,
         error: 'Order not found' 
@@ -280,18 +283,20 @@ router.get('/:id', authenticate, async (req, res) => {
 
     // Check if user owns this order (unless admin)
     if (req.user.role !== 'admin' && order.userId !== req.user.id) {
+      console.log('❌ Access denied - user:', req.user.id, 'does not own order:', order.userId);
       return res.status(403).json({ 
         success: false,
         error: 'Access denied' 
       });
     }
 
+    console.log('✅ Order access granted for:', req.user.email);
     res.json({
       success: true,
       order
     });
   } catch (error) {
-    console.error('Error fetching order:', error);
+    console.error('❌ Error fetching order:', error);
     res.status(500).json({ 
       success: false,
       error: 'Failed to fetch order' 
@@ -299,46 +304,8 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-// ========================================
-// ADMIN: GET ALL ORDERS
-// ========================================
-// GET /api/orders/admin/all - Get all orders (admin only)
-router.get('/admin/all', adminAuth, async (req, res) => {
-  try {
-    const { status, limit = 50, offset = 0 } = req.query;
 
-    const whereClause = status ? { status } : {};
 
-    const orders = await Order.findAll({
-      where: whereClause,
-      include: [
-        {
-          model: OrderItem,
-          as: 'OrderItems'
-        },
-        {
-          model: User,
-          as: 'User',
-          attributes: ['id', 'name', 'email', 'phone']
-        }
-      ],
-      order: [['createdAt', 'DESC']],
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
-
-    res.json({
-      success: true,
-      data: { orders }
-    });
-  } catch (error) {
-    console.error('Error fetching all orders:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Failed to fetch orders' 
-    });
-  }
-});
 
 // GET /api/orders/admin/pending - Get all pending orders (admin only)
 router.get('/admin/pending', authenticate, adminAuth, async (req, res) => {
@@ -401,8 +368,10 @@ router.get('/customer/:userId', authenticate, adminAuth, async (req, res) => {
 // ADMIN: UPDATE ORDER STATUS
 // ========================================
 // PATCH /api/orders/:id/status - Update order status (admin only)
-router.patch('/:id/status', adminAuth, async (req, res) => {
+router.patch('/:id/status', authenticate, adminAuth, async (req, res) => {
   try {
+    console.log('🔄 Admin updating order status:', req.user.email);
+    
     const { status } = req.body;
 
     const validStatuses = ['pending', 'accepted', 'preparing', 'ready', 'completed', 'cancelled'];
@@ -424,7 +393,7 @@ router.patch('/:id/status', adminAuth, async (req, res) => {
     order.status = status;
     await order.save();
 
-    console.log(`✅ Order #${order.id} status updated to: ${status}`);
+    console.log(`✅ Order #${order.id} status updated to: ${status} by ${req.user.email}`);
 
     res.json({
       success: true,
@@ -432,7 +401,7 @@ router.patch('/:id/status', adminAuth, async (req, res) => {
       order
     });
   } catch (error) {
-    console.error('Error updating order status:', error);
+    console.error('❌ Error updating order status:', error);
     res.status(500).json({ 
       success: false,
       error: 'Failed to update order status' 

@@ -1,12 +1,12 @@
 // backend/routes/analytics.js
 const express = require('express');
 const router = express.Router();
-const { auth, adminAuth } = require('../middleware/auth');
+const { authenticate, adminAuth } = require('../middleware/auth');
 const { Order, OrderItem, MenuItem, User } = require('../models');
-const { Op, fn, col, literal } = require('sequelize');
+const { Op, fn, col } = require('sequelize');
 
 // Protect all analytics routes (Admin only)
-router.use(auth);
+router.use(authenticate);
 router.use(adminAuth);
 
 // GET /api/analytics/summary - Today's summary
@@ -28,8 +28,8 @@ router.get('/summary', async (req, res) => {
       }
     });
 
-    // Today's revenue
-    const todayRevenue = await Order.sum('totalAmount', {
+    // Today's revenue (FIXED: use 'total' instead of 'totalAmount')
+    const todayRevenue = await Order.sum('total', {
       where: {
         createdAt: {
           [Op.gte]: today,
@@ -42,7 +42,7 @@ router.get('/summary', async (req, res) => {
     // Average order value today
     const avgOrderValue = todayOrders > 0 
       ? (todayRevenue / todayOrders).toFixed(2)
-      : 0;
+      : '0.00';
 
     // Pending orders
     const pendingOrders = await Order.count({
@@ -65,19 +65,38 @@ router.get('/summary', async (req, res) => {
       raw: true
     });
 
+    // Orders by type today
+    const ordersByType = await Order.findAll({
+      where: {
+        createdAt: {
+          [Op.gte]: today,
+          [Op.lt]: tomorrow
+        }
+      },
+      attributes: [
+        'orderType',
+        [fn('COUNT', col('id')), 'count'],
+        [fn('SUM', col('total')), 'revenue']
+      ],
+      group: ['orderType'],
+      raw: true
+    });
+
     res.json({
       success: true,
       data: {
+        date: today.toISOString().split('T')[0],
         todayOrders,
         todayRevenue: parseFloat(todayRevenue).toFixed(2),
         avgOrderValue,
         pendingOrders,
-        ordersByStatus
+        ordersByStatus,
+        ordersByType
       }
     });
 
   } catch (error) {
-    console.error('Error fetching summary:', error);
+    console.error('❌ Error fetching summary:', error);
     res.status(500).json({ 
       success: false,
       error: 'Error fetching summary data' 
@@ -91,22 +110,28 @@ router.get('/sales/:period', async (req, res) => {
     const { period } = req.params; // day, week, month, year
     const now = new Date();
     let startDate = new Date();
+    let groupFormat;
 
     switch (period) {
       case 'day':
         startDate.setHours(0, 0, 0, 0);
+        groupFormat = '%Y-%m-%d %H:00:00'; // Group by hour
         break;
       case 'week':
         startDate.setDate(now.getDate() - 7);
+        groupFormat = '%Y-%m-%d';
         break;
       case 'month':
         startDate.setMonth(now.getMonth() - 1);
+        groupFormat = '%Y-%m-%d';
         break;
       case 'year':
         startDate.setFullYear(now.getFullYear() - 1);
+        groupFormat = '%Y-%m';
         break;
       default:
-        startDate.setDate(now.getDate() - 7); // Default to week
+        startDate.setDate(now.getDate() - 7);
+        groupFormat = '%Y-%m-%d';
     }
 
     const orders = await Order.findAll({
@@ -117,33 +142,35 @@ router.get('/sales/:period', async (req, res) => {
         status: { [Op.ne]: 'cancelled' }
       },
       attributes: [
-        [fn('DATE', col('createdAt')), 'date'],
+        [fn('DATE_FORMAT', col('createdAt'), groupFormat), 'period'],
         [fn('COUNT', col('id')), 'orderCount'],
-        [fn('SUM', col('totalAmount')), 'revenue']
+        [fn('SUM', col('total')), 'revenue']
       ],
-      group: [fn('DATE', col('createdAt'))],
-      order: [[fn('DATE', col('createdAt')), 'ASC']],
+      group: [fn('DATE_FORMAT', col('createdAt'), groupFormat)],
+      order: [[fn('DATE_FORMAT', col('createdAt'), groupFormat), 'ASC']],
       raw: true
     });
 
-    const totalRevenue = orders.reduce((sum, day) => sum + parseFloat(day.revenue || 0), 0);
-    const totalOrders = orders.reduce((sum, day) => sum + parseInt(day.orderCount || 0), 0);
+    const totalRevenue = orders.reduce((sum, item) => sum + parseFloat(item.revenue || 0), 0);
+    const totalOrders = orders.reduce((sum, item) => sum + parseInt(item.orderCount || 0), 0);
 
     res.json({
       success: true,
       data: {
         period,
-        startDate,
-        endDate: now,
-        totalRevenue: totalRevenue.toFixed(2),
-        totalOrders,
-        avgOrderValue: totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) : 0,
-        dailyBreakdown: orders
+        startDate: startDate.toISOString(),
+        endDate: now.toISOString(),
+        summary: {
+          totalRevenue: totalRevenue.toFixed(2),
+          totalOrders,
+          avgOrderValue: totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) : '0.00'
+        },
+        breakdown: orders
       }
     });
 
   } catch (error) {
-    console.error('Error fetching sales data:', error);
+    console.error('❌ Error fetching sales data:', error);
     res.status(500).json({ 
       success: false,
       error: 'Error fetching sales data' 
@@ -169,6 +196,9 @@ router.get('/popular-items', async (req, res) => {
       case 'month':
         startDate.setMonth(now.getMonth() - 1);
         break;
+      case 'year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
       default:
         startDate.setMonth(now.getMonth() - 1);
     }
@@ -176,14 +206,16 @@ router.get('/popular-items', async (req, res) => {
     const popularItems = await OrderItem.findAll({
       attributes: [
         'menuItemId',
+        'name',
         [fn('SUM', col('quantity')), 'totalQuantity'],
-        [fn('SUM', col('subtotal')), 'totalRevenue'],
-        [fn('COUNT', fn('DISTINCT', col('orderId'))), 'orderCount']
+        [fn('SUM', fn('*', col('quantity'), col('price'))), 'totalRevenue'],
+        [fn('COUNT', fn('DISTINCT', col('OrderItem.orderId'))), 'orderCount']
       ],
       include: [
         {
           model: MenuItem,
-          attributes: ['id', 'name', 'category', 'price', 'imageUrl']
+          attributes: ['id', 'name', 'category', 'price', 'imageUrl', 'isAvailable'],
+          required: false
         },
         {
           model: Order,
@@ -196,22 +228,24 @@ router.get('/popular-items', async (req, res) => {
           }
         }
       ],
-      group: ['menuItemId', 'MenuItem.id'],
+      group: ['OrderItem.menuItemId', 'OrderItem.name', 'MenuItem.id'],
       order: [[fn('SUM', col('quantity')), 'DESC']],
       limit: parseInt(limit),
-      raw: false
+      subQuery: false
     });
 
     res.json({
       success: true,
       data: {
         period,
+        startDate: startDate.toISOString(),
+        endDate: now.toISOString(),
         items: popularItems
       }
     });
 
   } catch (error) {
-    console.error('Error fetching popular items:', error);
+    console.error('❌ Error fetching popular items:', error);
     res.status(500).json({ 
       success: false,
       error: 'Error fetching popular items' 
@@ -222,8 +256,8 @@ router.get('/popular-items', async (req, res) => {
 // GET /api/analytics/revenue - Revenue statistics
 router.get('/revenue', async (req, res) => {
   try {
-    // Total all-time revenue
-    const totalRevenue = await Order.sum('totalAmount', {
+    // Total all-time revenue (FIXED: use 'total')
+    const totalRevenue = await Order.sum('total', {
       where: { status: { [Op.ne]: 'cancelled' } }
     }) || 0;
 
@@ -232,7 +266,7 @@ router.get('/revenue', async (req, res) => {
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    const monthRevenue = await Order.sum('totalAmount', {
+    const monthRevenue = await Order.sum('total', {
       where: {
         createdAt: { [Op.gte]: monthStart },
         status: { [Op.ne]: 'cancelled' }
@@ -243,7 +277,7 @@ router.get('/revenue', async (req, res) => {
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - 7);
 
-    const weekRevenue = await Order.sum('totalAmount', {
+    const weekRevenue = await Order.sum('total', {
       where: {
         createdAt: { [Op.gte]: weekStart },
         status: { [Op.ne]: 'cancelled' }
@@ -254,28 +288,115 @@ router.get('/revenue', async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const todayRevenue = await Order.sum('totalAmount', {
+    const todayRevenue = await Order.sum('total', {
       where: {
         createdAt: { [Op.gte]: today },
         status: { [Op.ne]: 'cancelled' }
       }
     }) || 0;
 
+    // Yesterday's revenue
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const yesterdayRevenue = await Order.sum('total', {
+      where: {
+        createdAt: { 
+          [Op.gte]: yesterday,
+          [Op.lt]: today
+        },
+        status: { [Op.ne]: 'cancelled' }
+      }
+    }) || 0;
+
+    // Calculate growth percentages
+    const todayGrowth = yesterdayRevenue > 0 
+      ? (((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100).toFixed(2)
+      : '0.00';
+
     res.json({
       success: true,
       data: {
-        totalRevenue: parseFloat(totalRevenue).toFixed(2),
-        monthRevenue: parseFloat(monthRevenue).toFixed(2),
-        weekRevenue: parseFloat(weekRevenue).toFixed(2),
-        todayRevenue: parseFloat(todayRevenue).toFixed(2)
+        total: parseFloat(totalRevenue).toFixed(2),
+        month: parseFloat(monthRevenue).toFixed(2),
+        week: parseFloat(weekRevenue).toFixed(2),
+        today: parseFloat(todayRevenue).toFixed(2),
+        yesterday: parseFloat(yesterdayRevenue).toFixed(2),
+        growth: {
+          todayVsYesterday: `${todayGrowth}%`
+        }
       }
     });
 
   } catch (error) {
-    console.error('Error fetching revenue stats:', error);
+    console.error('❌ Error fetching revenue stats:', error);
     res.status(500).json({ 
       success: false,
       error: 'Error fetching revenue statistics' 
+    });
+  }
+});
+
+// GET /api/analytics/categories - Sales by category
+router.get('/categories', async (req, res) => {
+  try {
+    const { period = 'month' } = req.query;
+    
+    let startDate = new Date();
+    switch (period) {
+      case 'day':
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'week':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(startDate.getMonth() - 1);
+        break;
+      default:
+        startDate.setMonth(startDate.getMonth() - 1);
+    }
+
+    const categories = await OrderItem.findAll({
+      attributes: [
+        [col('MenuItem.category'), 'category'],
+        [fn('SUM', col('quantity')), 'totalQuantity'],
+        [fn('SUM', fn('*', col('quantity'), col('price'))), 'totalRevenue'],
+        [fn('COUNT', fn('DISTINCT', col('OrderItem.orderId'))), 'orderCount']
+      ],
+      include: [
+        {
+          model: MenuItem,
+          attributes: [],
+          required: true
+        },
+        {
+          model: Order,
+          attributes: [],
+          where: {
+            createdAt: { [Op.gte]: startDate },
+            status: { [Op.ne]: 'cancelled' }
+          }
+        }
+      ],
+      group: ['MenuItem.category'],
+      order: [[fn('SUM', fn('*', col('quantity'), col('price'))), 'DESC']],
+      raw: true
+    });
+
+    res.json({
+      success: true,
+      data: {
+        period,
+        categories
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching category analytics:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Error fetching category analytics' 
     });
   }
 });

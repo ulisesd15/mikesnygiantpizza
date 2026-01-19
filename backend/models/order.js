@@ -109,19 +109,16 @@ const Order = sequelize.define('Order', {
   }
 });
 
-// ✅ ASSOCIATIONS
+// ASSOCIATIONS
 Order.associate = (models) => {
-  // Order belongs to User (optional - can be null for guest orders)
   Order.belongsTo(models.User, {
     foreignKey: 'userId',
     as: 'User'
   });
-
-  // Order has many OrderItems
+  
   Order.hasMany(models.OrderItem, {
     foreignKey: 'orderId',
-    as: 'OrderItems',
-    onDelete: 'CASCADE'
+    as: 'OrderItems'
   });
 };
 

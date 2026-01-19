@@ -1,6 +1,8 @@
 // frontend/components/adminPanel.js
 import { showToast } from '../utils/cartStore.js';
 import { renderOrdersPanel, initOrdersPanel } from './admin/OrdersPanel.js';
+import { renderUsersPanel, initUsersPanel } from './admin/UsersPanel.js';
+import { renderInventoryPanel, initInventoryPanel } from './admin/InventoryPanel.js';
 
 let currentAdminSection = 'dashboard'; // Default to dashboard
 
@@ -385,6 +387,22 @@ export function renderAdminTab() {
           >
             🍕 Menu
           </button>
+          <button 
+            id="admin-users-btn"
+            onclick="window.switchAdminSection('users')" 
+            class="admin-nav-btn"
+            style="padding: 0.75rem 1.5rem; background: ${currentAdminSection === 'users' ? 'white' : 'rgba(255,255,255,0.2)'}; color: ${currentAdminSection === 'users' ? '#007bff' : 'white'}; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;"
+          >
+            👥 Users
+          </button>
+          <button 
+            id="admin-inventory-btn"
+            onclick="window.switchAdminSection('inventory')" 
+            class="admin-nav-btn"
+            style="padding: 0.75rem 1.5rem; background: ${currentAdminSection === 'inventory' ? 'white' : 'rgba(255,255,255,0.2)'}; color: ${currentAdminSection === 'inventory' ? '#007bff' : 'white'}; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;"
+          >
+            📦 Inventory
+          </button>
         </div>
       </div>
 
@@ -401,6 +419,16 @@ export function renderAdminTab() {
       <!-- Menu Management Section -->
       <div id="admin-menu-section" style="display: ${currentAdminSection === 'menu' ? 'block' : 'none'};">
         ${renderMenuManagement()}
+      </div>
+
+      <!-- Users Management Section -->
+      <div id="admin-users-section" style="display: ${currentAdminSection === 'users' ? 'block' : 'none'};">
+        ${renderUsersPanel()}
+      </div>
+
+      <!-- Inventory Management Section -->
+      <div id="admin-inventory-section" style="display: ${currentAdminSection === 'inventory' ? 'block' : 'none'};">
+        ${renderInventoryPanel()}
       </div>
     </div>
 
@@ -480,6 +508,9 @@ function renderDashboard() {
           </button>
           <button onclick="window.switchAdminSection('menu')" style="padding: 1rem; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;">
             ➕ Add Menu Item
+          </button>
+          <button onclick="window.switchAdminSection('inventory')" style="padding: 1rem; background: #ffc107; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;">
+            📦 Check Inventory
           </button>
           <button onclick="window.refreshDashboard()" style="padding: 1rem; background: #17a2b8; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;">
             🔄 Refresh Stats
@@ -609,7 +640,7 @@ window.switchAdminSection = async (section) => {
   currentAdminSection = section;
   
   // Hide all sections
-  ['dashboard', 'orders', 'menu'].forEach(sec => {
+  ['dashboard', 'orders', 'menu', 'users', 'inventory'].forEach(sec => {
     const el = document.getElementById(`admin-${sec}-section`);
     if (el) el.style.display = 'none';
     
@@ -631,6 +662,10 @@ window.switchAdminSection = async (section) => {
     await initOrdersPanel();
   } else if (section === 'menu') {
     loadAdminMenu();
+  } else if (section === 'users') {
+    await initUsersPanel();
+  } else if (section === 'inventory') {
+    await initInventoryPanel();
   }
 };
 
@@ -665,5 +700,9 @@ export function initAdminPanel() {
     initOrdersPanel();
   } else if (currentAdminSection === 'menu') {
     loadAdminMenu();
+  } else if (currentAdminSection === 'users') {
+    initUsersPanel();
+  } else if (currentAdminSection === 'inventory') {
+    initInventoryPanel();
   }
 }

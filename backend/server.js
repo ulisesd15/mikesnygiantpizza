@@ -20,7 +20,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') {
     res.sendStatus(200);
@@ -29,25 +29,27 @@ app.use((req, res, next) => {
   }
 });
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`);
   next();
 });
+
+
+
 const authRoutes = require('./routes/auth');
-console.log('authRoutes:', typeof authRoutes, authRoutes);
-
 const menuRoutes = require('./routes/menu');
-console.log('menuRoutes:', typeof menuRoutes, menuRoutes);
-
 const adminRoutes = require('./routes/admin');
-console.log('adminRoutes:', typeof adminRoutes, adminRoutes);
-
 const orderRoutes = require('./routes/orders');
-console.log('orderRoutes:', typeof orderRoutes, orderRoutes);
+const analyticsRoutes = require('./routes/analytics');
+const inventoryRoutes = require('./routes/inventory'); // ✅ NEW
 
+
+
+
+app.use('/api/analytics', analyticsRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/inventory', inventoryRoutes); // ✅ NEW
 // app.use('/api/analytics', require('./routes/analytics'));
 
 // Your existing routes 👇
@@ -90,12 +92,12 @@ app.get('/api/db-reset', async (req, res) => {
 });
 
 app.listen(PORT, async () => {
-  console.log(`🍕 Backend listening on http://localhost:${PORT}`);
+
   try {
     // ✅ IMPROVED: Safe sync on startup
-    console.log('🔄 Syncing database...');
+
     await sequelize.sync({ alter: true }); // Safe: updates tables without data loss
-    console.log('✅ Database synced successfully!');
+
   } catch (err) {
     console.error('❌ Database sync failed:', err.message);
     console.error('\n⚠️  Troubleshooting:');
@@ -107,21 +109,7 @@ app.listen(PORT, async () => {
   }
 });
 
-// Test DB connection
-app.get('/api/db-test', async (req, res) => {
-  try {
-    await sequelize.authenticate();
-    res.json({ 
-      status: 'success', 
-      message: 'Database connected!' 
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      status: 'error', 
-      message: error.message 
-    });
-  }
-});
+
 
 
 
