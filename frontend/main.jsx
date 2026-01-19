@@ -131,12 +131,36 @@ function mainUI() {
           <div id="auth-form" style="text-align: center;">
             <h3 style="color: #333; margin: 0 0 1.5rem; font-size: 1.5rem;">👋 Welcome Back</h3>
             
-            <!-- Email & Password Login -->
-            <input id="auth-email" type="email" placeholder="Email" class="input-style" style="margin-bottom: 1rem;">
-            <input id="auth-password" type="password" placeholder="Password" class="input-style" style="margin-bottom: 1rem;">
-            <button onclick="handleAuthSubmit()" style="background: #28a745; color: white; border: none; padding: 0.875rem; border-radius: 8px; font-size: 1rem; cursor: pointer; width: 100%; font-weight: 500; margin-bottom: 0.75rem;">🚀 Login</button>
-            <button onclick="handleAuthSubmit(true)" style="background: linear-gradient(135deg, #17a2b8, #138496); color: white; border: none; padding: 0.875rem; border-radius: 8px; font-size: 1rem; cursor: pointer; width: 100%; font-weight: 500; margin-bottom: 1rem;">➕ Create Account</button>
-            
+           <!-- Email & Password Login -->
+          <input id="auth-email" type="email" placeholder="Email" class="input-style" style="margin-bottom: 1rem;">
+
+          <!-- Password Input with Toggle -->
+          <div style="position: relative; margin-bottom: 1rem;">
+            <input 
+              id="auth-password" 
+              type="password" 
+              placeholder="Password" 
+              class="input-style" 
+              style="padding-right: 3rem; margin-bottom: 0;"
+            >
+            <button 
+              type="button"
+              id="toggle-password"
+              onclick="togglePasswordVisibility()"
+              style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1.25rem; color: #666; padding: 0.25rem; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 4px; transition: background 0.2s;"
+              aria-label="Toggle password visibility"
+            >
+              <span id="eye-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              </span>
+            </button>
+          </div>
+
+          <button onclick="handleAuthSubmit()" style="background: #28a745; color: white; border: none; padding: 0.875rem; border-radius: 8px; font-size: 1rem; cursor: pointer; width: 100%; font-weight: 500; margin-bottom: 0.75rem;">🚀 Login</button>
+
             <!-- Divider -->
             <div style="text-align: center; margin: 1.5rem 0; position: relative;">
               <div style="border-top: 1px solid #ddd;"></div>
@@ -231,6 +255,25 @@ function mainUI() {
     </div>
   `;
 }
+
+// Password toggle functionality
+window.togglePasswordVisibility = () => {
+  const passwordInput = document.getElementById('auth-password');
+  const eyeIcon = document.getElementById('eye-icon');
+  const toggleBtn = document.getElementById('toggle-password');
+   
+
+  if (!passwordInput || !eyeIcon) return;
+  
+  if (passwordInput.type === 'password') {
+    passwordInput.type = 'text';
+    toggleBtn.style.background = '#f0f0f0';
+  } else {
+    passwordInput.type = 'password';
+    toggleBtn.style.background = 'none';
+  }
+};
+
 
 // 🔧 LOAD GOOGLE SIGN-IN
 function loadGoogleSignIn() {
