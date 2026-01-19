@@ -167,49 +167,54 @@ router.post('/', optionalAuth, async (req, res) => {
 // ========================================
 // GET USER'S ORDERS
 // ========================================
-// GET /api/orders/my-orders - Get current user's order history (with pagination)
+// GET /api/orders/my-orders - Get logged-in customer's orders
 router.get('/my-orders', authenticate, async (req, res) => {
   try {
-    const { page = 1, limit = 10, status } = req.query;
-    const offset = (page - 1) * limit;
-
-    const whereClause = { userId: req.user.id };
-    if (status) {
-      whereClause.status = status;
-    }
-
-    const { count, rows: orders } = await Order.findAndCountAll({
-      where: whereClause,
-      include: [{
-        model: OrderItem,
-        as: 'OrderItems',
-        include: [{ model: MenuItem, as: 'MenuItem' }]
-      }],
-      order: [['createdAt', 'DESC']],
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
-
-    res.json({ 
-      success: true,
-      data: {
-        orders,
-        pagination: {
-          total: count,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(count / limit)
+    const orders = await Order.findAll({
+      where: { userId: req.user.id },
+      include: [
+        { 
+          model: OrderItem, 
+          as: 'items',
+          include: [{ model: MenuItem, as: 'menuItem' }]
         }
-      }
+      ],
+      order: [['createdAt', 'DESC']]
     });
+    
+    res.json({ success: true, orders });
   } catch (error) {
-    console.error('Error fetching orders:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Failed to fetch orders' 
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// GET /api/orders/:id - Get single order details
+router.get('/:id', authenticate, async (req, res) => {
+  try {
+    const order = await Order.findOne({
+      where: { 
+        id: req.params.id,
+        userId: req.user.id // Ensure customer can only see their own orders
+      },
+      include: [
+        { 
+          model: OrderItem, 
+          as: 'items',
+          include: [{ model: MenuItem, as: 'menuItem' }]
+        }
+      ]
+    });
+    
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+    
+    res.json({ success: true, order });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ========================================
 // GET USER'S ORDERS
 // ========================================

@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { auth, adminAuth } = require('../middleware/auth');
+const { authenticate, adminAuth } = require('../middleware/auth');
 const { Ingredient } = require('../models');
 const { Op } = require('sequelize');
 
 // Protect ALL inventory routes - admin only
-router.use(auth);
+router.use(authenticate);
 router.use(adminAuth);
 
 // =====================================================

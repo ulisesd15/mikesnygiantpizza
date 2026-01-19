@@ -6,6 +6,7 @@ import { renderAdminTab, initAdminPanel, loadAdminMenu } from './components/admi
 import { renderOrdersTab, initOrdersTab } from './components/ordersTab.jsx';
 import { renderCheckoutPage, initCheckout } from './components/checkout/CheckoutPage.jsx';
 import { renderOrderConfirmation, initOrderConfirmation } from './components/orders/OrderConfirmation.jsx';
+
 import { checkAuth, updateAuthUI } from './auth.jsx'; 
 
 
