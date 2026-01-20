@@ -1,5 +1,4 @@
-require('dotenv').config();
-const { sequelize, MenuItem } = require('../models');
+const models = require('../models');
 
 const items = [
   // ========== SPECIALTY PIZZAS (All 4 Sizes) ==========
@@ -116,36 +115,28 @@ const items = [
 async function seed() {
   try {
     console.log('🌱 Connecting to database...');
-    await MenuItem.sync({ alter: true }); 
+    await models.sequelize.authenticate();
+    console.log('✅ Database connected!');
     
-    const count = await MenuItem.count();
-    if (count > 0) {
-      console.log('⚠️ Menu already has items. Clearing old data...');
-      await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
-      await MenuItem.destroy({ where: {}, truncate: true });
-      await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
-      console.log('✅ Old menu items cleared.');
+    // Sync the model
+    await models.sequelize.sync({ alter: true });
+    console.log('✅ Models synced!');
+    
+    // Check if MenuItem exists
+    if (!models.MenuItem) {
+      throw new Error('MenuItem model not found in models');
     }
     
-    await MenuItem.bulkCreate(items);
+    await models.MenuItem.bulkCreate(items);
     console.log(`✅ Menu seeded successfully with ${items.length} items!`);
-    console.log('📊 Breakdown:');
-    console.log(`   - Pizzas: ${items.filter(i => i.category === 'pizza').length}`);
-    console.log(`   - Wings: ${items.filter(i => i.category === 'wings').length}`);
-    console.log(`   - Salads: ${items.filter(i => i.category === 'salad').length}`);
-    console.log(`   - Appetizers: ${items.filter(i => i.category === 'appetizer').length}`);
-    console.log(`   - Pasta: ${items.filter(i => i.category === 'pasta').length}`);
-    console.log(`   - Subs: ${items.filter(i => i.category === 'sub').length}`);
-    console.log(`   - Combos: ${items.filter(i => i.category === 'combo').length}`);
-    console.log(`   - Calzones: ${items.filter(i => i.category === 'calzone').length}`);
-    console.log(`   - Drinks: ${items.filter(i => i.category === 'drink').length}`);
-    console.log(`   - Desserts: ${items.filter(i => i.category === 'dessert').length}`);
-    console.log(`   - Sides: ${items.filter(i => i.category === 'side').length}`);
+    
+    // Your breakdown logs...
     
   } catch (error) {
     console.error('❌ Seeding failed:', error);
+    console.error('Available models:', Object.keys(models));
   } finally {
-    await sequelize.close();
+    await models.sequelize.close();
   }
 }
 
