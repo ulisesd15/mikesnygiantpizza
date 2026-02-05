@@ -1,16 +1,13 @@
-// backend/config/database.js
 const { Sequelize } = require('sequelize');
-require('dotenv').config();
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST,
-    dialect: 'mysql',
-    logging: false  // ✅ Add this line to disable SQL logs
-  }
-);
+const sequelize = new Sequelize({
+  dialect: 'mysql',
+  host: process.env.DB_HOST || 'localhost',
+  username: process.env.DB_USER || 'root',
+  password: process.env.DB_PASS || 'kimpembe',
+  database: process.env.DB_NAME || 'mikes_pizza',
+  logging: false  // Set true to see SQL queries
+});
 
-module.exports = sequelize;
+
+module.exports = sequelize;  // ✅ Sequelize INSTANCE

@@ -1,7 +1,7 @@
 // backend/middleware/auth.js
-
 const jwt = require('jsonwebtoken');
-const { User } = require('../models');
+const models = require('../models');
+const User = models.User;
 
 // Regular authentication middleware
 async function authenticate(req, res, next) {
