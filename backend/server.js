@@ -7,7 +7,8 @@ const PORT = process.env.PORT || 5001;
 
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { User, sequelize } = require('./models');
+
+const models = require('./models');  
 
 app.use(cors({
   origin: 'http://localhost:5173', 
@@ -15,9 +16,8 @@ app.use(cors({
 }));
 
 app.use(express.json());
-
-// ADD THESE 3 LINES HERE 👇
 app.use(express.urlencoded({ extended: true }));
+
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
@@ -28,31 +28,23 @@ app.use((req, res, next) => {
     next();
   }
 });
-app.use((req, res, next) => {
-  next();
-});
-
-
 
 const authRoutes = require('./routes/auth');
 const menuRoutes = require('./routes/menu');
 const adminRoutes = require('./routes/admin');
 const orderRoutes = require('./routes/orders');
+const toppingsRoutes = require('./routes/toppings');
 const analyticsRoutes = require('./routes/analytics');
-const inventoryRoutes = require('./routes/inventory'); // ✅ NEW
-
-
-
+const inventoryRoutes = require('./routes/inventory');
 
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/inventory', inventoryRoutes); // ✅ NEW
-// app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/toppings', toppingsRoutes);
+app.use('/api/inventory', inventoryRoutes);
 
-// Your existing routes 👇
 app.get('/', (req, res) => {
   res.json({ message: 'Mike\'s NY Giant Pizza API' });
 });
@@ -65,11 +57,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ✅ IMPROVED: Sync tables safely without force delete
 app.get('/api/db-sync', async (req, res) => {
   try {
     console.log('🔄 Syncing database tables...');
-    await sequelize.sync({ alter: true }); // Safely updates tables
+    await models.sequelize.sync({ alter: true });
     console.log('✅ Database sync complete');
     res.json({ status: 'success', message: 'Tables synced!' });
   } catch (error) {
@@ -78,11 +69,10 @@ app.get('/api/db-sync', async (req, res) => {
   }
 });
 
-// ⚠️ WARNING: Reset DB (development only) - Drops all tables!
 app.get('/api/db-reset', async (req, res) => {
   try {
     console.log('⚠️  WARNING: Dropping and recreating all tables...');
-    await sequelize.sync({ force: true }); // WARNING: Drops tables!
+    await models.sequelize.sync({ force: true });
     console.log('✅ Database reset and synced!');
     res.json({ status: 'success', message: 'DB reset and synced!' });
   } catch (error) {
@@ -92,24 +82,26 @@ app.get('/api/db-reset', async (req, res) => {
 });
 
 app.listen(PORT, async () => {
-
+  console.log(`🚀 Backend listening on port ${PORT}`);
+  
   try {
-    // ✅ IMPROVED: Safe sync on startup
-
-    await sequelize.sync({ alter: true }); // Safe: updates tables without data loss
-
+    await models.sequelize.authenticate();
+    console.log('✅ MySQL connected');
+    
+    await models.sequelize.sync({ alter: true });
+    console.log('✅ Database synced');
+    
+    // Call associate methods
+    Object.values(models).forEach(model => {
+      model.associate?.(models);
+    });
+    console.log('✅ Associations loaded');
+    
   } catch (err) {
     console.error('❌ Database sync failed:', err.message);
     console.error('\n⚠️  Troubleshooting:');
     console.error('   1. Check MySQL is running: mysql -u root -p');
-    console.error('   2. If constraint error, reset DB:');
-    console.error('      - DROP DATABASE IF EXISTS mikes_pizza;');
-    console.error('      - CREATE DATABASE mikes_pizza;');
-    console.error('      - npm start');
+    console.error('   2. Create DB if missing: CREATE DATABASE mikes_pizza;');
+    console.error('   3. Visit http://laocalhost:5001/api/db-sync');
   }
 });
-
-
-
-
-

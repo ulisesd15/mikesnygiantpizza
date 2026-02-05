@@ -123,6 +123,15 @@ function mainUI() {
       <!-- Cart -->
       ${renderCartDrawer()}
 
+      <!-- Pizza Customization Modal -->
+      <div id="pizza-custom-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="background: white; margin: 5% auto; padding: 1.5rem; border-radius: 12px; max-width: 500px; max-height: 90vh; overflow-y: auto; position: relative;">
+          <button onclick="window.hidePizzaCustom()" style="position: absolute; top: 0.75rem; right: 0.75rem; background: none; border: none; font-size: 1.25rem; cursor: pointer;">×</button>
+          <div id="pizza-custom-content"></div>
+        </div>
+      </div>
+
+
       <!-- Auth Modal -->
       <div id="auth-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; backdrop-filter: blur(2px);">
         <div style="background: white; margin: 10% auto; padding: 2rem; border-radius: 12px; max-width: 400px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
@@ -273,6 +282,106 @@ window.togglePasswordVisibility = () => {
     toggleBtn.style.background = 'none';
   }
 };
+
+let currentCustomization = null;
+
+window.showPizzaCustom = (data) => {
+  currentCustomization = data;
+  const modal = document.getElementById('pizza-custom-modal');
+  const content = document.getElementById('pizza-custom-content');
+  if (!modal || !content) return;
+
+  const { menuItem, defaultToppings, availableToppings } = data;
+
+  content.innerHTML = `
+    <h3 style="margin-top: 0;">Customize ${menuItem.name} (${menuItem.size})</h3>
+    <p>Base price: $${menuItem.basePrice.toFixed(2)}</p>
+
+    <h4>Remove toppings</h4>
+    <div>
+      ${defaultToppings.map(t => `
+        <label style="display: block; margin-bottom: 0.25rem;">
+          <input type="checkbox" class="remove-topping" value="${t.id}" ${t.isRemovable ? '' : 'disabled'}>
+          ${t.name} ${t.isRemovable ? '' : '(required)'}
+        </label>
+      `).join('') || '<p style="color:#777;">No removable default toppings.</p>'}
+    </div>
+
+    <h4 style="margin-top: 1rem;">Add extra toppings</h4>
+    <div>
+      ${availableToppings.map(t => `
+        <label style="display: block; margin-bottom: 0.25rem;">
+          <input type="checkbox" class="add-topping" value="${t.id}" data-price="${t.price}">
+          ${t.name} (+$${t.price.toFixed(2)})
+        </label>
+      `).join('') || '<p style="color:#777;">No extra toppings available.</p>'}
+    </div>
+
+    <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #ddd;">
+      <p id="custom-price" style="font-weight: 600;">
+        Total: $${menuItem.basePrice.toFixed(2)}
+      </p>
+      <button onclick="window.confirmPizzaCustom()" style="width: 100%; background:#ff6b35; color:white; border:none; padding:0.75rem; border-radius:8px; cursor:pointer; font-size:1rem; font-weight:600;">
+        Add to Cart
+      </button>
+    </div>
+  `;
+
+  modal.style.display = 'block';
+
+  // Attach listeners to recalc price
+  const recalc = () => {
+    if (!currentCustomization) return;
+    let total = currentCustomization.menuItem.basePrice;
+    document.querySelectorAll('#pizza-custom-content .add-topping:checked').forEach(cb => {
+      total += parseFloat(cb.dataset.price || '0');
+    });
+    document.getElementById('custom-price').textContent = `Total: $${total.toFixed(2)}`;
+  };
+  document.querySelectorAll('#pizza-custom-content .add-topping')
+    .forEach(cb => cb.addEventListener('change', recalc));
+};
+
+window.hidePizzaCustom = () => {
+  const modal = document.getElementById('pizza-custom-modal');
+  if (modal) modal.style.display = 'none';
+  currentCustomization = null;
+};
+
+window.confirmPizzaCustom = () => {
+  if (!currentCustomization || !window.addToCart) return;
+
+  const { menuItem } = currentCustomization;
+
+  const removed = Array.from(
+    document.querySelectorAll('#pizza-custom-content .remove-topping:checked')
+  ).map(cb => {
+    const id = parseInt(cb.value, 10);
+    const t = currentCustomization.defaultToppings.find(x => x.id === id);
+    return t ? { id: t.id, name: t.name } : null;
+  }).filter(Boolean);
+
+  const added = Array.from(
+    document.querySelectorAll('#pizza-custom-content .add-topping:checked')
+  ).map(cb => {
+    const id = parseInt(cb.value, 10);
+    const price = parseFloat(cb.dataset.price || '0');
+    const t = currentCustomization.availableToppings.find(x => x.id === id);
+    return t ? { id: t.id, name: t.name, price } : null;
+  }).filter(Boolean);
+
+  window.addToCart({
+    menuItemId: menuItem.id,
+    name: menuItem.name,
+    size: menuItem.size,
+    basePrice: menuItem.basePrice,
+    addedToppings: added,
+    removedToppings: removed
+  });
+
+  window.hidePizzaCustom();
+};
+
 
 
 // 🔧 LOAD GOOGLE SIGN-IN

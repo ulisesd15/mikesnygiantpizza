@@ -329,9 +329,9 @@ function pizzaGroupCard(sizes) {
       </div>
       
       <button class="add-to-cart-btn" data-group-id="${sizes[0].id}" 
-              onclick="window.addToCartPizza(this)"
+        onclick="window.customizePizzaAndAdd(this)"
               style="width: 100%; background: #ff6b35; color: white; border: none; padding: 1rem; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: background 0.3s;">
-        ➕ Add to Cart
+        ➕ Customize & Add
       </button>
     </div>
   `;
@@ -355,6 +355,31 @@ function singleItemCard(item, extraClass = '') {
     </div>
   `;
 }
+
+window.customizePizzaAndAdd = async (btn) => {
+  const groupId = btn.dataset.groupId;
+  const sizeSelect = document.querySelector(`.size-selector[data-group-id="${groupId}"]`);
+  if (!sizeSelect) return;
+
+  const selectedId = parseInt(sizeSelect.value, 10);
+
+  try {
+    const res = await fetch(`/api/menu/${selectedId}/customization`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    // For now: log it; next phase is showing a modal UI
+    console.log('Customization data:', data);
+
+    // TEMP: just add base pizza as before
+    if (window.addToCart) {
+      window.addToCart(selectedId);
+    }
+  } catch (err) {
+    console.error('Failed to load customization data:', err);
+  }
+};
+
 
 // Global functions
 export function initMenuGlobalFunctions() {
