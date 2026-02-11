@@ -1,25 +1,73 @@
-const express = require('express');
-const router = express.Router();
-const { User, Order, MenuItem } = require('../models');
-const { verifyToken, isAdmin } = require('../middleware/auth');
+// backend/models/admin.js
+const { DataTypes } = require('sequelize');
+const bcrypt = require('bcrypt');
 
-// Get Dashboard Stats
-router.get('/stats', [verifyToken, isAdmin], async (req, res) => {
-  try {
-    const totalUsers = await User.count();
-    const totalOrders = await Order.count();
-    const pendingOrders = await Order.count({ where: { status: 'pending' } });
-    const totalMenuItems = await MenuItem.count();
+module.exports = (sequelize, DataTypes) => {  // ✅ Factory function
+  const Admin = sequelize.define('Admin', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    email: {
+      type: DataTypes.STRING,
+      unique: true,
+      allowNull: false,
+      validate: {
+        isEmail: true
+      }
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    phone: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    role: {
+      type: DataTypes.STRING,
+      defaultValue: 'admin',
+      allowNull: false
+    }
+  }, {
+    tableName: 'Admins',  // ✅ Explicit table name
+    timestamps: true,
+    hooks: {
+      beforeCreate: async (admin) => {
+        if (admin.password) {
+          const salt = await bcrypt.genSalt(10);
+          admin.password = await bcrypt.hash(admin.password, salt);
+        }
+      },
+      beforeUpdate: async (admin) => {
+        if (admin.changed('password') && admin.password) {
+          const salt = await bcrypt.genSalt(10);
+          admin.password = await bcrypt.hash(admin.password, salt);
+        }
+      }
+    }
+  });
 
-    res.json({
-      totalUsers,
-      totalOrders,
-      pendingOrders,
-      totalMenuItems
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+  
+  Admin.prototype.validatePassword = async function(password) {
+    if (!this.password) {
+      return false;
+    }
+    return await bcrypt.compare(password, this.password);
+  };
 
-module.exports = router;
+  // Admin.associate = (models) => {
+  //   // Add Admin associations here if needed later
+  // };
+
+  return Admin;
+};
+
+
+
+

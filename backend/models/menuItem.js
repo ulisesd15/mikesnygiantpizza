@@ -37,21 +37,21 @@ module.exports = (sequelize, DataTypes) => {  // ✅ Factory wrapper
     tableName: 'MenuItems'  // ✅ Explicit
   });
 
-  // Keep your existing associate EXACTLY as-is ✅
-  MenuItem.associate = (models) => {
-    MenuItem.hasMany(models.OrderItem, {
-      foreignKey: 'menuItemId',
-      as: 'OrderItems',
-      onDelete: 'NO ACTION'
-    });
+  // // Keep your existing associate EXACTLY as-is ✅
+  // MenuItem.associate = (models) => {
+  //   MenuItem.hasMany(models.OrderItem, {
+  //     foreignKey: 'menuItemId',
+  //     as: 'OrderItems',
+  //     onDelete: 'NO ACTION'
+  //   });
 
-    MenuItem.belongsToMany(models.Ingredient, {
-      through: 'menu_item_default_toppings',
-      foreignKey: 'menuItemId',
-      otherKey: 'ingredientId',
-      as: 'defaultToppings'
-    });
-  };
+  //   MenuItem.belongsToMany(models.Ingredient, {
+  //     through: 'menu_item_default_toppings',
+  //     foreignKey: 'menuItemId',
+  //     otherKey: 'ingredientId',
+  //     as: 'defaultToppings'
+  //   });
+  // };
 
   return MenuItem;
 };

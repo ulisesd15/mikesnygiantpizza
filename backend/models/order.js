@@ -16,17 +16,17 @@ module.exports = (sequelize, DataTypes) => {
     tableName: 'Recipes'  // ✅ Explicit
   });
 
-  Recipe.associate = (models) => {
-    // Recipe belongs to MenuItem (one recipe per menu item)
-    Recipe.belongsTo(models.MenuItem, {
-      foreignKey: 'menuItemId'
-    });
+  // Recipe.associate = (models) => {
+  //   // Recipe belongs to MenuItem (one recipe per menu item)
+  //   Recipe.belongsTo(models.MenuItem, {
+  //     foreignKey: 'menuItemId'
+  //   });
     
-    // Recipe belongs to Ingredient (one ingredient per recipe line)
-    Recipe.belongsTo(models.Ingredient, {
-      foreignKey: 'ingredientId'
-    });
-  };
+  //   // Recipe belongs to Ingredient (one ingredient per recipe line)
+  //   Recipe.belongsTo(models.Ingredient, {
+  //     foreignKey: 'ingredientId'
+  //   });
+  // };
 
   return Recipe;
 };
