@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  const OrderItem = sequelize.define('OrderItem', {
+  const OrderItem = sequelize.define('orderItem', {
     id: { 
       type: DataTypes.INTEGER, 
       primaryKey: true, 
@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Orders',
+        model: 'orders',
         key: 'id'
       },
       onDelete: 'CASCADE'
@@ -21,7 +21,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'MenuItems',
+        model: 'menuItems',
         key: 'id'
       }
     },
@@ -49,7 +49,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true
     }
   }, {
-    tableName: 'OrderItems',  // ✅ Explicit
+    tableName: 'orderItems',  // ✅ Explicit
     timestamps: false
   });
 
@@ -57,12 +57,12 @@ module.exports = (sequelize, DataTypes) => {
   OrderItem.associate = (models) => {
     OrderItem.belongsTo(models.Order, {
       foreignKey: 'orderId',
-      as: 'Order'
+      as: 'order'
     });
 
     OrderItem.belongsTo(models.MenuItem, {
       foreignKey: 'menuItemId',
-      as: 'MenuItem'
+      as: 'menuItem'
     });
   };
 
