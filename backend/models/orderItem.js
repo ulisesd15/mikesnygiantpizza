@@ -55,16 +55,19 @@ module.exports = (sequelize, DataTypes) => {
 
   // Your associations PERFECT ✅
   OrderItem.associate = (models) => {
-    OrderItem.belongsTo(models.Order, {
+    OrderItem.belongsTo(models.order, {      // 'order' from Loaded models
       foreignKey: 'orderId',
       as: 'order'
     });
 
-    OrderItem.belongsTo(models.MenuItem, {
+    OrderItem.belongsTo(models.MenuItem, {   // 'MenuItem' from Loaded models
       foreignKey: 'menuItemId',
       as: 'menuItem'
     });
   };
+
+
+
 
   return OrderItem;
 };
