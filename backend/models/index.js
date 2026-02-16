@@ -29,6 +29,7 @@ fs
     db[model.name] = model;
   });
 
+
 // Setup associations
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {

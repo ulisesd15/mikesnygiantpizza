@@ -1,32 +1,53 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  const Recipe = sequelize.define('Recipe', {
+  const Order = sequelize.define('order', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true
     },
-    quantityRequired: {
-      type: DataTypes.DECIMAL(10, 3), // e.g., 0.250 kg cheese per pizza
-      allowNull: false,
-      defaultValue: 1
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Users',
+        key: 'id'
+      }
+    },
+    status: {
+      type: DataTypes.ENUM('pending', 'preparing', 'ready', 'delivered', 'cancelled'),
+      defaultValue: 'pending'
+    },
+    totalPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false
+    },
+    deliveryAddress: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    customerName: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    customerPhone: {
+      type: DataTypes.STRING,
+      allowNull: false
     }
   }, {
-    tableName: 'Recipes'  // ✅ Explicit
+    tableName: 'orders',
+    timestamps: true
   });
 
-  // Recipe.associate = (models) => {
-  //   // Recipe belongs to MenuItem (one recipe per menu item)
-  //   Recipe.belongsTo(models.MenuItem, {
-  //     foreignKey: 'menuItemId'
-  //   });
-    
-  //   // Recipe belongs to Ingredient (one ingredient per recipe line)
-  //   Recipe.belongsTo(models.Ingredient, {
-  //     foreignKey: 'ingredientId'
-  //   });
-  // };
+  Order.associate = (models) => {
+  Order.hasMany(models.orderItem, {  // <- changed
+    foreignKey: 'orderId',
+    as: 'orderItems'
+  });
+  };
 
-  return Recipe;
+
+
+  return Order;
 };

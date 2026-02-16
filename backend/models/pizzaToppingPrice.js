@@ -28,5 +28,6 @@ module.exports = (sequelize, DataTypes) => {
     });
   };
 
+
   return PizzaToppingPrice;
 };
