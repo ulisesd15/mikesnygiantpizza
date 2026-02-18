@@ -47,21 +47,19 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   OrderItem.associate = (models) => {
-    // Guard: Skip if model miss
-    // ing or assoc duplicate
-    if (models.Order && !OrderItem.associations.order) {
-      OrderItem.belongsTo(models.Order, {
-        foreignKey: 'orderId',
-        as: 'order'
-      });
-    }
-    if (models.MenuItem && !OrderItem.associations.menuItem) {
-      OrderItem.belongsTo(models.MenuItem, {
-        foreignKey: 'menuItemId',
-        as: 'menuItem'
-      });
-    }
+    OrderItem.belongsTo(models.order, {      // 'order' from Loaded models
+      foreignKey: 'orderId',
+      as: 'order'
+    });
+
+    OrderItem.belongsTo(models.MenuItem, {   // 'MenuItem' from Loaded models
+      foreignKey: 'menuItemId',
+      as: 'menuItem'
+    });
   };
+
+
+
 
   return OrderItem;
 };

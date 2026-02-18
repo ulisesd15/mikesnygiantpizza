@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  const Order = sequelize.define('Order', {
+  const Order = sequelize.define('order', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -17,10 +17,9 @@ module.exports = (sequelize, DataTypes) => {
     },
     status: {
       type: DataTypes.ENUM('pending', 'preparing', 'ready', 'delivered', 'cancelled'),
-      allowNull: true,
       defaultValue: 'pending'
     },
-    totalPrice: {  // Matches your table
+    totalPrice: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false
     },
@@ -29,35 +28,26 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true
     },
     customerName: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING,
       allowNull: false
     },
     customerPhone: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING,
       allowNull: false
     }
   }, {
     tableName: 'orders',
-    timestamps: true,  // createdAt/updatedAt (matches table)
-    underscored: true  // created_at/updated_at if needed
+    timestamps: true
   });
 
   Order.associate = (models) => {
-    // User (optional for guest orders)
-    if (models.User && !Order.associations.user) {
-      Order.belongsTo(models.User, {
-        foreignKey: 'userId',
-        as: 'user'
-      });
-    }
-    // OrderItems
-    if (models.OrderItem && !Order.associations.orderItems) {
-      Order.hasMany(models.OrderItem, {
-        foreignKey: 'orderId',
-        as: 'orderItems'
-      });
-    }
+  Order.hasMany(models.orderItem, {  // <- changed
+    foreignKey: 'orderId',
+    as: 'orderItems'
+  });
   };
+
+
 
   return Order;
 };

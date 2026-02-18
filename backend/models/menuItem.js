@@ -37,24 +37,22 @@ module.exports = (sequelize, DataTypes) => {
     tableName: 'MenuItems'
   });
 
-  MenuItem.associate = (models) => {
-    if (models.OrderItem && !MenuItem.associations.OrderItems) {
-      MenuItem.hasMany(models.OrderItem, {
-        foreignKey: 'menuItemId',
-        as: 'OrderItems',
-        onDelete: 'NO ACTION'
-      });
-    }
-    // Uncomment if Ingredient model exists
-    // if (models.Ingredient && !MenuItem.associations.defaultToppings) {
-    //   MenuItem.belongsToMany(models.Ingredient, {
-    //     through: 'menu_item_default_toppings',
-    //     foreignKey: 'menuItemId',
-    //     otherKey: 'ingredientId',
-    //     as: 'defaultToppings'
-    //   });
-    // }
-  };
+  // Keep your existing associate EXACTLY as-is ✅
+MenuItem.associate = (models) => {
+  MenuItem.hasMany(models.orderItem, {  // lowercase 'o'
+    foreignKey: 'menuItemId',
+    as: 'OrderItems',
+    onDelete: 'NO ACTION'
+  });
+  MenuItem.belongsToMany(models.Ingredient, {
+    through: 'menu_item_default_toppings',
+    foreignKey: 'menuItemId',
+    otherKey: 'ingredientId',
+    as: 'defaultIngredients'  
+  });
+};
+
+
 
   return MenuItem;
 };

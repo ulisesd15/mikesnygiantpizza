@@ -35,17 +35,15 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   Recipe.associate = (models) => {
-    if (models.MenuItem && !Recipe.associations.MenuItem) {
-      Recipe.belongsTo(models.MenuItem, {
-        foreignKey: 'menuItemId'
-      });
-    }
-    if (models.Ingredient && !Recipe.associations.Ingredient) {
-      Recipe.belongsTo(models.Ingredient, {
-        foreignKey: 'ingredientId'
-      });
-    }
+    Recipe.belongsTo(models.MenuItem, {
+      foreignKey: 'menuItemId'
+    });
+    
+    Recipe.belongsTo(models.Ingredient, {
+      foreignKey: 'ingredientId'
+    });
   };
+
 
   return Recipe;
 };
