@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 
-module.exports = (sequelize, DataTypes) => {  // ✅ Factory wrapper
+module.exports = (sequelize, DataTypes) => {
   const MenuItem = sequelize.define('MenuItem', {
     id: {
       type: DataTypes.INTEGER,
@@ -34,7 +34,7 @@ module.exports = (sequelize, DataTypes) => {  // ✅ Factory wrapper
       defaultValue: true
     }
   }, {
-    tableName: 'MenuItems'  // ✅ Explicit
+    tableName: 'MenuItems'
   });
 
   // Keep your existing associate EXACTLY as-is ✅

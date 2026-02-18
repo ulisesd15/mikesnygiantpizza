@@ -1,14 +1,22 @@
-// backend/models/pizzaToppingPrice.js
 module.exports = (sequelize, DataTypes) => {
   const PizzaToppingPrice = sequelize.define(
-    'pizzaToppingPrice',
+    'PizzaToppingPrice',
     {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+      },
       ingredientId: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: false,
+        references: {
+          model: 'Ingredients',
+          key: 'id'
+        }
       },
       size: {
-        type: DataTypes.STRING,
+        type: DataTypes.STRING(255),
         allowNull: false
       },
       price: {
@@ -17,15 +25,18 @@ module.exports = (sequelize, DataTypes) => {
       }
     },
     {
-      tableName: 'pizza_topping_prices'
+      tableName: 'pizza_topping_prices',
+      timestamps: true
     }
   );
 
   PizzaToppingPrice.associate = (models) => {
-    PizzaToppingPrice.belongsTo(models.Ingredient, {
-      foreignKey: 'ingredientId',
-      as: 'ingredient'
-    });
+    if (models.Ingredient && !PizzaToppingPrice.associations.ingredient) {
+      PizzaToppingPrice.belongsTo(models.Ingredient, {
+        foreignKey: 'ingredientId',
+        as: 'ingredient'
+      });
+    }
   };
 
 

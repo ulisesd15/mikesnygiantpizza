@@ -33,14 +33,14 @@ module.exports = (sequelize, DataTypes) => {  // ✅ Factory wrapper
   });
 
   // Keep your existing associate EXACTLY as-is ✅
-  Ingredient.associate = (models) => {
-    Ingredient.belongsToMany(models.MenuItem, {
-      through: 'menu_item_default_toppings',
-      foreignKey: 'ingredientId',
-      otherKey: 'menuItemId',
-      as: 'defaultOnPizzas'
-    });
-  };
+  // Ingredient.associate = (models) => {
+  //   Ingredient.belongsToMany(models.MenuItem, {
+  //     through: 'menu_item_default_toppings',
+  //     foreignKey: 'ingredientId',
+  //     otherKey: 'menuItemId',
+  //     as: 'defaultOnPizzas'
+  //   });
+  // };
 
   return Ingredient;
 };

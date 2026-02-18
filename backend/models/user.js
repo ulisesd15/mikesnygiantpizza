@@ -1,63 +1,74 @@
-// backend/models/User.js
-const { DataTypes } = require('sequelize');
 const bcrypt = require('bcrypt');
 
-module.exports = (sequelize, DataTypes) => {  // ✅ Factory function
+module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define('User', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true
     },
+
     email: {
-      type: DataTypes.STRING,
-      unique: true,
+      type: DataTypes.STRING(255),
       allowNull: false,
-      validate: {
-        isEmail: true
-      }
-    },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    role: {
-      type: DataTypes.ENUM('customer', 'admin'),
-      defaultValue: 'customer',
-      allowNull: false
-    },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false
-    },
-    phone: DataTypes.STRING,
-    address: DataTypes.TEXT,
-    googleId: {
-      type: DataTypes.STRING,
       unique: true,
+      validate: { isEmail: true }
+    },
+
+    password: {
+      type: DataTypes.STRING(255),
       allowNull: true
     },
-    authProvider: {
-      type: DataTypes.ENUM('local', 'google'),
-      defaultValue: 'local',
+
+    role: {
+      type: DataTypes.ENUM('customer', 'admin'),
+      allowNull: false,
+      defaultValue: 'customer'
+    },
+
+    name: {
+      type: DataTypes.STRING(255),
       allowNull: false
     },
+
+    phone: {
+      type: DataTypes.STRING(255),
+      allowNull: true
+    },
+
+    address: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+
+    googleId: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      unique: true
+    },
+
+    authProvider: {
+      type: DataTypes.ENUM('local', 'google'),
+      allowNull: false,
+      defaultValue: 'local'
+    },
+
     profilePicture: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(255),
       allowNull: true
     }
   }, {
-    tableName: 'Users',  // ✅ Add explicit tableName
+    tableName: 'Users',
     timestamps: true,
     hooks: {
       beforeCreate: async (user) => {
-        if (user.password && user.authProvider === 'local') {
+        if (user.authProvider === 'local' && user.password) {
           const salt = await bcrypt.genSalt(10);
           user.password = await bcrypt.hash(user.password, salt);
         }
       },
       beforeUpdate: async (user) => {
-        if (user.changed('password') && user.password && user.authProvider === 'local') {
+        if (user.authProvider === 'local' && user.changed('password') && user.password) {
           const salt = await bcrypt.genSalt(10);
           user.password = await bcrypt.hash(user.password, salt);
         }
@@ -65,21 +76,17 @@ module.exports = (sequelize, DataTypes) => {  // ✅ Factory function
     }
   });
 
-  // ✅ Move prototype methods inside factory
-  User.prototype.validatePassword = async function(password) {
-    if (!this.password || this.authProvider !== 'local') {
-      return false;
-    }
-    return await bcrypt.compare(password, this.password);
+  User.prototype.validatePassword = async function (password) {
+    if (this.authProvider !== 'local' || !this.password) return false;
+    return bcrypt.compare(password, this.password);
   };
 
-  User.prototype.isAdmin = function() {
+  User.prototype.isAdmin = function () {
     return this.role === 'admin';
   };
 
   User.associate = (models) => {
-    // Add User associations here later if needed
-    // User.hasMany(models.Order, { foreignKey: 'userId' });
+    // If you want: User.hasMany(models.Order, { foreignKey: 'userId', as: 'orders' });
   };
 
   return User;

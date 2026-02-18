@@ -8,12 +8,30 @@ module.exports = (sequelize, DataTypes) => {
       autoIncrement: true
     },
     quantityRequired: {
-      type: DataTypes.DECIMAL(10, 3), // e.g., 0.250 kg cheese per pizza
+      type: DataTypes.DECIMAL(10, 3),
       allowNull: false,
-      defaultValue: 1
+      defaultValue: 1.000
+    },
+    menuItemId: {  // FK - was missing!
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'MenuItems',
+        key: 'id'
+      }
+    },
+    ingredientId: {  // FK - was missing!
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Ingredients',
+        key: 'id'
+      }
     }
   }, {
-    tableName: 'Recipes'  // ✅ Explicit
+    tableName: 'Recipes',
+    timestamps: true,  // createdAt/updatedAt matches table
+    underscored: false // Uses camelCase (matches schema)
   });
 
   Recipe.associate = (models) => {
