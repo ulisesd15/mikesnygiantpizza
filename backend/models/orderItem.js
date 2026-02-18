@@ -1,7 +1,9 @@
+
+
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  const OrderItem = sequelize.define('orderItem', {
+  const OrderItem = sequelize.define('OrderItem', {
     id: { 
       type: DataTypes.INTEGER, 
       primaryKey: true, 
@@ -10,20 +12,11 @@ module.exports = (sequelize, DataTypes) => {
     
     orderId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'orders',
-        key: 'id'
-      },
-      onDelete: 'CASCADE'
+      allowNull: false
     },
     menuItemId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'menuItems',
-        key: 'id'
-      }
+      allowNull: false
     },
     
     name: {
@@ -49,21 +42,25 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true
     }
   }, {
-    tableName: 'orderItems',  // ✅ Explicit
+    tableName: 'orderItems',
     timestamps: false
   });
 
-  // Your associations PERFECT ✅
   OrderItem.associate = (models) => {
-    OrderItem.belongsTo(models.Order, {
-      foreignKey: 'orderId',
-      as: 'order'
-    });
-
-    OrderItem.belongsTo(models.MenuItem, {
-      foreignKey: 'menuItemId',
-      as: 'menuItem'
-    });
+    // Guard: Skip if model miss
+    // ing or assoc duplicate
+    if (models.Order && !OrderItem.associations.order) {
+      OrderItem.belongsTo(models.Order, {
+        foreignKey: 'orderId',
+        as: 'order'
+      });
+    }
+    if (models.MenuItem && !OrderItem.associations.menuItem) {
+      OrderItem.belongsTo(models.MenuItem, {
+        foreignKey: 'menuItemId',
+        as: 'menuItem'
+      });
+    }
   };
 
   return OrderItem;

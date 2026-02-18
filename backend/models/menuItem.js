@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 
-module.exports = (sequelize, DataTypes) => {  // ✅ Factory wrapper
+module.exports = (sequelize, DataTypes) => {
   const MenuItem = sequelize.define('MenuItem', {
     id: {
       type: DataTypes.INTEGER,
@@ -34,24 +34,27 @@ module.exports = (sequelize, DataTypes) => {  // ✅ Factory wrapper
       defaultValue: true
     }
   }, {
-    tableName: 'MenuItems'  // ✅ Explicit
+    tableName: 'MenuItems'
   });
 
-  // // Keep your existing associate EXACTLY as-is ✅
-  // MenuItem.associate = (models) => {
-  //   MenuItem.hasMany(models.OrderItem, {
-  //     foreignKey: 'menuItemId',
-  //     as: 'OrderItems',
-  //     onDelete: 'NO ACTION'
-  //   });
-
-  //   MenuItem.belongsToMany(models.Ingredient, {
-  //     through: 'menu_item_default_toppings',
-  //     foreignKey: 'menuItemId',
-  //     otherKey: 'ingredientId',
-  //     as: 'defaultToppings'
-  //   });
-  // };
+  MenuItem.associate = (models) => {
+    if (models.OrderItem && !MenuItem.associations.OrderItems) {
+      MenuItem.hasMany(models.OrderItem, {
+        foreignKey: 'menuItemId',
+        as: 'OrderItems',
+        onDelete: 'NO ACTION'
+      });
+    }
+    // Uncomment if Ingredient model exists
+    // if (models.Ingredient && !MenuItem.associations.defaultToppings) {
+    //   MenuItem.belongsToMany(models.Ingredient, {
+    //     through: 'menu_item_default_toppings',
+    //     foreignKey: 'menuItemId',
+    //     otherKey: 'ingredientId',
+    //     as: 'defaultToppings'
+    //   });
+    // }
+  };
 
   return MenuItem;
 };

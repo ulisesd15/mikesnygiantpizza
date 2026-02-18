@@ -5,30 +5,18 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-
 const models = require('./models');  
 
+// Middleware
 app.use(cors({
-  origin: 'http://localhost:5173', 
+  origin: 'http://localhost:5173',
   credentials: true
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
-
+// Routes
 const authRoutes = require('./routes/auth');
 const menuRoutes = require('./routes/menu');
 const adminRoutes = require('./routes/admin');
@@ -45,6 +33,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/toppings', toppingsRoutes);
 app.use('/api/inventory', inventoryRoutes);
 
+// Health check
 app.get('/', (req, res) => {
   res.json({ message: 'Mike\'s NY Giant Pizza API' });
 });
@@ -52,56 +41,58 @@ app.get('/', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    message: 'Mike\'s NY Giant Pizza API running on port 5001',
+    message: 'Mike\'s NY Giant Pizza API running',
     timestamp: new Date().toISOString()
   });
 });
 
+// Explicit DB sync endpoints
 app.get('/api/db-sync', async (req, res) => {
   try {
-    console.log('🔄 Syncing database tables...');
     await models.sequelize.sync({ alter: true });
-    console.log('✅ Database sync complete');
     res.json({ status: 'success', message: 'Tables synced!' });
   } catch (error) {
-    console.error('❌ Sync failed:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
 app.get('/api/db-reset', async (req, res) => {
   try {
-    console.log('⚠️  WARNING: Dropping and recreating all tables...');
     await models.sequelize.sync({ force: true });
-    console.log('✅ Database reset and synced!');
     res.json({ status: 'success', message: 'DB reset and synced!' });
   } catch (error) {
-    console.error('❌ Reset failed:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
-
+// Start server
 app.listen(PORT, async () => {
   console.log(`🚀 Backend listening on port ${PORT}`);
-  
+
   try {
     await models.sequelize.authenticate();
-    console.log('✅ MySQL connected');
-    
-    await models.sequelize.sync({ alter: true });
-    console.log('✅ Database synced');
-    
-    // Call associate methods
-    Object.values(models).forEach(model => {
-      model.associate?.(models);
+
+    // Define associations FIRST (safe, deduped)
+    const loaded = new Set();
+    Object.keys(models).forEach((modelName) => {
+      const model = models[modelName];
+      if (typeof model?.associate === 'function') {
+        if (loaded.has(modelName)) {
+          console.warn(`⚠️ associate() skipped duplicate for model: ${modelName}`);
+          return;
+        }
+        loaded.add(modelName);
+        model.associate(models);
+      }
     });
-    console.log('✅ Associations loaded');
-    
+
+    // Then sync (plain sync, no alter on startup)
+    await models.sequelize.sync();
+
   } catch (err) {
-    console.error('❌ Database sync failed:', err.message);
+    console.error('❌ Startup failed:', err.message);
     console.error('\n⚠️  Troubleshooting:');
-    console.error('   1. Check MySQL is running: mysql -u root -p');
-    console.error('   2. Create DB if missing: CREATE DATABASE mikes_pizza;');
-    console.error('   3. Visit http://laocalhost:5001/api/db-sync');
+    console.error('   1. Check MySQL: mysql -u root -p');
+    console.error('   2. CREATE DATABASE mikes_pizza;');
+    console.error('   3. http://localhost:5001/api/db-sync');
   }
 });

@@ -1,32 +1,63 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  const Recipe = sequelize.define('Recipe', {
+  const Order = sequelize.define('Order', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true
     },
-    quantityRequired: {
-      type: DataTypes.DECIMAL(10, 3), // e.g., 0.250 kg cheese per pizza
-      allowNull: false,
-      defaultValue: 1
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Users',
+        key: 'id'
+      }
+    },
+    status: {
+      type: DataTypes.ENUM('pending', 'preparing', 'ready', 'delivered', 'cancelled'),
+      allowNull: true,
+      defaultValue: 'pending'
+    },
+    totalPrice: {  // Matches your table
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false
+    },
+    deliveryAddress: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    customerName: {
+      type: DataTypes.STRING(255),
+      allowNull: false
+    },
+    customerPhone: {
+      type: DataTypes.STRING(255),
+      allowNull: false
     }
   }, {
-    tableName: 'Recipes'  // ✅ Explicit
+    tableName: 'orders',
+    timestamps: true,  // createdAt/updatedAt (matches table)
+    underscored: true  // created_at/updated_at if needed
   });
 
-  // Recipe.associate = (models) => {
-  //   // Recipe belongs to MenuItem (one recipe per menu item)
-  //   Recipe.belongsTo(models.MenuItem, {
-  //     foreignKey: 'menuItemId'
-  //   });
-    
-  //   // Recipe belongs to Ingredient (one ingredient per recipe line)
-  //   Recipe.belongsTo(models.Ingredient, {
-  //     foreignKey: 'ingredientId'
-  //   });
-  // };
+  Order.associate = (models) => {
+    // User (optional for guest orders)
+    if (models.User && !Order.associations.user) {
+      Order.belongsTo(models.User, {
+        foreignKey: 'userId',
+        as: 'user'
+      });
+    }
+    // OrderItems
+    if (models.OrderItem && !Order.associations.orderItems) {
+      Order.hasMany(models.OrderItem, {
+        foreignKey: 'orderId',
+        as: 'orderItems'
+      });
+    }
+  };
 
-  return Recipe;
+  return Order;
 };
