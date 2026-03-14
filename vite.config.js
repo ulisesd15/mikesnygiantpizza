@@ -15,15 +15,14 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main: './index.html'  // ✅ Fixed: frontend/index.html
-        // Removed dead pages (admin.html, cart.html, etc.)
+        main: './frontend/index.html'
       }
     }
   },
   css: {
     preprocessorOptions: {
       scss: {
-        additionalData: `@import "./style.css";`  // ✅ Fixed path
+        additionalData: `@import "./frontend/style.css";`
       }
     }
   }

@@ -39,7 +39,7 @@ module.exports = (sequelize, DataTypes) => {
 
   // Keep your existing associate EXACTLY as-is ✅
 MenuItem.associate = (models) => {
-  MenuItem.hasMany(models.orderItem, {  // lowercase 'o'
+  MenuItem.hasMany(models.OrderItem, {  // lowercase 'o'
     foreignKey: 'menuItemId',
     as: 'OrderItems',
     onDelete: 'NO ACTION'
