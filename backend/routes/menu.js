@@ -8,8 +8,6 @@ const { authenticate, adminAuth } = require('../middleware/auth');  // ✅ Add t
 const router = express.Router();
 
 
-
-
 // GET all menu items (public)
 router.get('/', async (req, res) => {
   try {
@@ -65,18 +63,6 @@ router.put('/:id', authenticate, adminAuth, async (req, res) => {
   }
 });
 
-// DELETE (admin only)
-router.delete('/:id', authenticate, adminAuth, async (req, res) => {
-  try {
-    const item = await MenuItem.findByPk(req.params.id);
-    if (!item) return res.status(404).json({ error: 'Item not found' });
-    await item.destroy();
-    res.json({ message: 'Item deleted' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 router.get('/:id/customization', async (req, res) => {
   try {
     // Fix 1: Remove isRemovable from through attributes
@@ -127,6 +113,20 @@ router.get('/:id/customization', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch customization data' });
   }
 });
+
+// DELETE (admin only)
+router.delete('/:id', authenticate, adminAuth, async (req, res) => {
+  try {
+    const item = await MenuItem.findByPk(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Item not found' });
+    await item.destroy();
+    res.json({ message: 'Item deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 
 
 

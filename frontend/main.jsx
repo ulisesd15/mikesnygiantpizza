@@ -1,11 +1,11 @@
-// main.js - Updated with Google OAuth and Checkout Integration
-import { renderCartDrawer, initCartDrawer } from './utils/cartDrawer.js';
-import { initGlobalFunctions } from './utils/cartStore.js';
-import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './components/menuRenderer.jsx';
-import { renderAdminTab, initAdminPanel, loadAdminMenu } from './components/adminPanel.jsx';
-import { renderOrdersTab, initOrdersTab } from './components/ordersTab.jsx';
-import { renderCheckoutPage, initCheckout } from './components/checkout/CheckoutPage.jsx';
-import { renderOrderConfirmation, initOrderConfirmation } from './components/orders/OrderConfirmation.jsx';
+// main.jsx
+import { renderCartDrawer, initCartDrawer } from './src/components/cart/cartDrawer.js';
+import { initGlobalFunctions } from './src/components/cart/cartStore.js';
+import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './src/components/menuRenderer.jsx';
+import { renderAdminTab, initAdminPanel, loadAdminMenu } from './src/components/admin/adminPanel.jsx';
+import { renderOrdersTab, initOrdersTab } from './src/components/ordersTab.jsx';
+import { renderCheckoutPage, initCheckout } from './src/components/checkout/CheckoutPage.jsx';
+import { renderOrderConfirmation, initOrderConfirmation } from './src/components/orders/OrderConfirmation.jsx';
 
 import { checkAuth, updateAuthUI } from './auth.jsx'; 
 
@@ -429,46 +429,34 @@ function loadGoogleSignIn() {
 
 async function loadApp() {
   console.log('🚀 Starting app load...');
-  
-  // 1. Render HTML FIRST
-  document.getElementById('app').innerHTML = mainUI();
+
+  const appEl = document.getElementById('root');
+  if (!appEl) {
+    throw new Error('Missing #app container in index.html');
+  }
+
+  appEl.innerHTML = mainUI();
   console.log('✅ HTML rendered');
-  
-  // 2. Load Google Sign-In
+
   loadGoogleSignIn();
-  
-  // 3. Initialize global functions
   initMenuGlobalFunctions();
   initCartDrawer();
   initGlobalFunctions();
-  console.log('✅ Global functions initialized');
-  
-  // 4. Load menu data
-  console.log('🔄 Loading menu...');
+
   await loadMenu();
-  console.log('✅ Menu loaded');
-  
-  // 5. Check authentication SAFELY
+
   try {
     if (typeof checkAuth === 'function') {
-      console.log('🔍 checkAuth available');
       await checkAuth();
-    } else {
-      console.warn('❌ checkAuth not imported - skipping');
     }
     await updateAuthUI();
   } catch (error) {
     console.warn('⚠️ Auth check failed:', error.message);
   }
-  console.log('🔍 AFTER AUTH - window.currentUser:', window.currentUser);
 
-  
-  
-  // 6. Update cart drawer
   updateCartDrawerWithCheckout();
-  
-  console.log('✅ App fully loaded!');
 }
+
 
 // Add checkout button to cart drawer
 function updateCartDrawerWithCheckout() {
@@ -488,7 +476,7 @@ function updateCartDrawerWithCheckout() {
 // Start the app
 loadApp().catch(error => {
   console.error('❌ App failed to load:', error);
-  document.getElementById('app').innerHTML = `
+  document.getElementById('root').innerHTML = `
     <div style="text-align: center; padding: 3rem; color: #dc3545;">
       <h2>Failed to load application</h2>
       <p>${error.message}</p>
@@ -496,3 +484,4 @@ loadApp().catch(error => {
     </div>
   `;
 });
+

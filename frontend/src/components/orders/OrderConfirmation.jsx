@@ -1,5 +1,6 @@
 // frontend/components/orders/OrderConfirmation.js
 
+//HELPERS
 export function renderOrderConfirmation(order) {
   // Default mock order if none provided
   if (!order) {
@@ -345,7 +346,6 @@ export function initOrderConfirmation() {
 
   window.trackOrder = (orderId) => {
     console.log('📍 Tracking order:', orderId);
-    // TODO: Navigate to order tracking page
     alert(`Tracking order ${orderId}...`);
   };
 

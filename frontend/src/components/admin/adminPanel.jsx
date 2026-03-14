@@ -1,14 +1,13 @@
 // frontend/components/adminPanel.js
-import { showToast } from '../utils/cartStore.js';
-import { renderOrdersPanel, initOrdersPanel } from './admin/OrdersPanel.js';
-import { renderUsersPanel, initUsersPanel } from './admin/UsersPanel.js';
-import { renderInventoryPanel, initInventoryPanel } from './admin/InventoryPanel.js';
+import { useState } from 'react';
+import { showToast } from '../cart/cartStore.js';
+import { renderOrdersPanel, initOrdersPanel } from './OrdersPanel.jsx';
+import { UsersPanel } from './UsersPanel.jsx';
 
 let currentAdminSection = 'dashboard'; // Default to dashboard
 
 
 
-// Load dashboard stats
 async function loadDashboardStats() {
   try {
     const token = localStorage.getItem('token');
@@ -21,10 +20,9 @@ async function loadDashboardStats() {
       document.getElementById('stat-menu-items').textContent = '—';
       return;
     }
-    // Fetch stats from backend
-    // ✅ FIXED: Changed endpoint from /api/orders/all to /api/admin/all
-     const [ordersRes, menuRes] = await Promise.all([
-      fetch('http://localhost:5001/api/admin/all', {
+
+    const [statsRes, menuRes] = await Promise.all([
+      fetch('http://localhost:5001/api/admin/stats', {
         method: 'GET',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -40,11 +38,9 @@ async function loadDashboardStats() {
       })
     ]);
 
-    
-    // Better error handling
-    if (!ordersRes.ok) {
-      const error = await ordersRes.json();
-      throw new Error(`Orders API Error (${ordersRes.status}): ${error.error || 'Unknown error'}`);
+    if (!statsRes.ok) {
+      const error = await statsRes.json();
+      throw new Error(`Stats API Error (${statsRes.status}): ${error.error || 'Unknown error'}`);
     }
     
     if (!menuRes.ok) {
@@ -52,50 +48,33 @@ async function loadDashboardStats() {
       throw new Error(`Menu API Error (${menuRes.status}): ${error.error || 'Unknown error'}`);
     }
     
-    const ordersData = await ordersRes.json();
+    const statsData = await statsRes.json();
     const menuData = await menuRes.json();
     
-    console.log('✅ Orders data received:', ordersData);
+    console.log('✅ Stats data received:', statsData);
     console.log('✅ Menu data received:', menuData);
     
-    // Flexible data extraction
-    const orders = ordersData.data?.orders || ordersData.orders || [];
+    // ✅ FIXED: Correct path to data
+    const stats = statsData.data.orders || statsData.data;
     const menuItems = menuData.data || menuData || [];
     
-    // Calculate stats
-    const today = new Date().toDateString();
-    const ordersToday = orders.filter(o => {
-      try {
-        return new Date(o.createdAt).toDateString() === today;
-      } catch (e) {
-        return false;
-      }
-    });
-    
-    const revenueToday = ordersToday.reduce((sum, o) => {
-      const total = parseFloat(o.total) || 0;
-      return sum + total;
-    }, 0);
-    
-    const activeOrders = orders.filter(o => 
-      ['pending', 'accepted', 'preparing', 'ready'].includes(o.status)
-    );
+    // ✅ FIXED: Correct property paths
+    const ordersToday = stats.today || stats.ordersToday || 0;
+    const revenueToday = parseFloat(stats.revenueToday || 0).toFixed(2);
+    const activeOrders = stats.active || stats.activeOrders || 0;
     
     console.log('📈 Stats:', { 
-      ordersToday: ordersToday.length, 
+      ordersToday, 
       revenueToday, 
-      activeOrders: activeOrders.length, 
+      activeOrders, 
       menuItems: menuItems.length 
     });
     
     // Update UI
-    document.getElementById('stat-orders-today').textContent = ordersToday.length;
-    document.getElementById('stat-revenue-today').textContent = `$${revenueToday.toFixed(2)}`;
-    document.getElementById('stat-active-orders').textContent = activeOrders.length;
+    document.getElementById('stat-orders-today').textContent = ordersToday;
+    document.getElementById('stat-revenue-today').textContent = `$${revenueToday}`;
+    document.getElementById('stat-active-orders').textContent = activeOrders;
     document.getElementById('stat-menu-items').textContent = menuItems.length;
-    
-    // Show recent orders
-    renderRecentOrders(orders.slice(0, 5));
     
     console.log('✅ Dashboard stats loaded successfully');
     
@@ -107,6 +86,8 @@ async function loadDashboardStats() {
     document.getElementById('stat-menu-items').textContent = '⚠️';
   }
 }
+
+
 
 window.refreshDashboard = () => {
   loadDashboardStats();
@@ -387,22 +368,6 @@ export function renderAdminTab() {
           >
             🍕 Menu
           </button>
-          <button 
-            id="admin-users-btn"
-            onclick="window.switchAdminSection('users')" 
-            class="admin-nav-btn"
-            style="padding: 0.75rem 1.5rem; background: ${currentAdminSection === 'users' ? 'white' : 'rgba(255,255,255,0.2)'}; color: ${currentAdminSection === 'users' ? '#007bff' : 'white'}; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;"
-          >
-            👥 Users
-          </button>
-          <button 
-            id="admin-inventory-btn"
-            onclick="window.switchAdminSection('inventory')" 
-            class="admin-nav-btn"
-            style="padding: 0.75rem 1.5rem; background: ${currentAdminSection === 'inventory' ? 'white' : 'rgba(255,255,255,0.2)'}; color: ${currentAdminSection === 'inventory' ? '#007bff' : 'white'}; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;"
-          >
-            📦 Inventory
-          </button>
         </div>
       </div>
 
@@ -419,16 +384,6 @@ export function renderAdminTab() {
       <!-- Menu Management Section -->
       <div id="admin-menu-section" style="display: ${currentAdminSection === 'menu' ? 'block' : 'none'};">
         ${renderMenuManagement()}
-      </div>
-
-      <!-- Users Management Section -->
-      <div id="admin-users-section" style="display: ${currentAdminSection === 'users' ? 'block' : 'none'};">
-        ${renderUsersPanel()}
-      </div>
-
-      <!-- Inventory Management Section -->
-      <div id="admin-inventory-section" style="display: ${currentAdminSection === 'inventory' ? 'block' : 'none'};">
-        ${renderInventoryPanel()}
       </div>
     </div>
 
@@ -509,9 +464,6 @@ function renderDashboard() {
           <button onclick="window.switchAdminSection('menu')" style="padding: 1rem; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;">
             ➕ Add Menu Item
           </button>
-          <button onclick="window.switchAdminSection('inventory')" style="padding: 1rem; background: #ffc107; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;">
-            📦 Check Inventory
-          </button>
           <button onclick="window.refreshDashboard()" style="padding: 1rem; background: #17a2b8; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;">
             🔄 Refresh Stats
           </button>
@@ -527,6 +479,26 @@ function renderDashboard() {
       </div>
     </div>
   `;
+}
+
+function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState('users');
+  
+  return (
+    <div className="admin-dashboard">
+      <nav className="admin-nav">
+        <button onClick={() => setActiveTab('users')}>Users</button>
+        <button onClick={() => setActiveTab('orders')}>Orders</button>
+        {/* other tabs */}
+      </nav>
+      
+      <div className="admin-content">
+        {activeTab === 'users' && <UsersPanel />}
+        {activeTab === 'orders' && <OrdersPanel />}
+        {/* other panels */}
+      </div>
+    </div>
+  );
 }
 
 function renderMenuManagement() {
@@ -640,7 +612,7 @@ window.switchAdminSection = async (section) => {
   currentAdminSection = section;
   
   // Hide all sections
-  ['dashboard', 'orders', 'menu', 'users', 'inventory'].forEach(sec => {
+  ['dashboard', 'orders', 'menu'].forEach(sec => {
     const el = document.getElementById(`admin-${sec}-section`);
     if (el) el.style.display = 'none';
     
@@ -662,10 +634,6 @@ window.switchAdminSection = async (section) => {
     await initOrdersPanel();
   } else if (section === 'menu') {
     loadAdminMenu();
-  } else if (section === 'users') {
-    await initUsersPanel();
-  } else if (section === 'inventory') {
-    await initInventoryPanel();
   }
 };
 
@@ -700,9 +668,7 @@ export function initAdminPanel() {
     initOrdersPanel();
   } else if (currentAdminSection === 'menu') {
     loadAdminMenu();
-  } else if (currentAdminSection === 'users') {
-    initUsersPanel();
-  } else if (currentAdminSection === 'inventory') {
-    initInventoryPanel();
   }
 }
+
+export default AdminDashboard;

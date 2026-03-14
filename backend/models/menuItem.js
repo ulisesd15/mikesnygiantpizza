@@ -37,8 +37,8 @@ module.exports = (sequelize, DataTypes) => {
     tableName: 'MenuItems'
   });
 
-MenuItem.associate = function(models) {
-  MenuItem.hasMany(models.OrderItem, {
+MenuItem.associate = (models) => {
+  MenuItem.hasMany(models.OrderItem, {  // lowercase 'o'
     foreignKey: 'menuItemId',
     as: 'OrderItems',
     onDelete: 'NO ACTION'
