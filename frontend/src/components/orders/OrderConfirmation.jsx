@@ -351,3 +351,5 @@ export function initOrderConfirmation() {
 
   console.log('✅ Order confirmation initialized');
 }
+
+//is this orderConfirmation.jsx working well? do i need to fix it? does it work with the config and the api.js? 

@@ -1,5 +1,11 @@
 // frontend/components/menuRenderer.js
-import { apiUrl } from './api';
+import { API_ROUTES, apiUrl } from '../../config';
+
+// Static (90% use case)
+fetch(API_ROUTES.profile)  // → http://localhost:5001/api/auth/profile
+
+// Dynamic (10% use case)  
+fetch(apiUrl(API_ROUTES.menuItem, { id: 123 }))  // → /api/menu/123
 
 // Local state
 let menuItems = [];

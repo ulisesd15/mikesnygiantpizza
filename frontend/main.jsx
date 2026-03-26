@@ -1,5 +1,5 @@
 // main.jsx
-import { renderCartDrawer, initCartDrawer } from './src/components/cart/cartDrawer.js';
+import { renderCartDrawer, initCartDrawer } from './src/components/cart/cartDrawer.jsx';
 import { initGlobalFunctions } from './src/components/cart/cartStore.js';
 import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './src/components/menuRenderer.jsx';
 import { renderAdminTab, initAdminPanel, loadAdminMenu } from './src/components/admin/adminPanel.jsx';
@@ -18,7 +18,6 @@ document.title = 'Mike\'s NY Giant Pizza - Online Ordering';
 let currentOrder = null; // Store current order for confirmation page
 
 // Helper to toggle admin button visibility
-
 
 // 🔧 DEFINE showTab BEFORE loadApp()
 window.showTab = (tab) => {
@@ -432,7 +431,7 @@ async function loadApp() {
 
   const appEl = document.getElementById('root');
   if (!appEl) {
-    throw new Error('Missing #app container in index.html');
+    throw new Error('Missing #root container in index.html');
   }
 
   appEl.innerHTML = mainUI();

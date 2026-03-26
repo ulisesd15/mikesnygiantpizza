@@ -1,44 +1,54 @@
-import { showToast } from './src/components/cart/cartStore.js';
-import { apiUrl } from './src/components/api.js';
+
+import { apiUrl } from './config.js';
 
 export async function checkAuth() {
   const token = localStorage.getItem('token');
   const savedUser = localStorage.getItem('user');
 
-  if (token) {
-    try {
-      if (savedUser) {
-        try {
-          window.currentUser = JSON.parse(savedUser);
-          updateAuthUI();
-          console.log('✅ Loaded user from localStorage:', window.currentUser);
-        } catch (e) {
-          console.error('Failed to parse saved user:', e);
-        }
-      }
-
-      const response = await fetch(apiUrl('/auth/profile'), {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        window.currentUser = data.user || data;
-        localStorage.setItem('user', JSON.stringify(window.currentUser));
-        updateAuthUI();
-        return window.currentUser;
-      } else {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.currentUser = null;
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-    }
+  if (!token) {
+    window.currentUser = null;
+    updateAuthUI();
+    return null;
   }
 
-  window.currentUser = null;
-  updateAuthUI();
+  try {
+    // Fast localStorage load first (optimistic UI)
+    if (savedUser) {
+      try {
+        window.currentUser = JSON.parse(savedUser);
+        updateAuthUI();
+        console.log('✅ Loaded user from localStorage:', window.currentUser);
+      } catch (e) {
+        console.error('Failed to parse saved user:', e);
+      }
+    }
+
+    // Backend validation
+    const response = await apiUrl(API_ROUTES.profile);  // Handles token automatically
+    
+    if (response.ok) {
+      const data = await response.json();
+      window.currentUser = data.user || data;
+      localStorage.setItem('user', JSON.stringify(window.currentUser));
+      updateAuthUI();
+      console.log('✅ Backend auth confirmed:', window.currentUser);
+      return window.currentUser;
+    } else {
+      // Token invalid - full cleanup
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.currentUser = null;
+      updateAuthUI();
+      console.log('❌ Token invalid, cleared auth');
+    }
+  } catch (error) {
+    console.error('Auth check failed:', error);
+    // Network error - keep optimistic UI but don't trust token
+    localStorage.removeItem('token');
+    window.currentUser = null;
+    updateAuthUI();
+  }
+
   return null;
 }
 
@@ -168,7 +178,8 @@ export async function handleGoogleAuth(credential) {
   console.log('🔐 Google auth triggered');
 
   try {
-    const res = await fetch(apiUrl('/auth/google'), {
+    // No auth token needed for Google endpoint
+    const res = await fetch(API_ROUTES.google, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ googleToken: credential })
@@ -185,6 +196,7 @@ export async function handleGoogleAuth(credential) {
       await updateAuthUI();
       window.hideAuth();
       showToast(`Welcome ${data.user.name}! 🎉`);
+      return data.user;  // Return for chaining
     } else {
       showToast(data.error || 'Google auth failed', 'error');
     }
