@@ -41,13 +41,11 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   Order.associate = (models) => {
-  Order.hasMany(models.OrderItem, {  // <- changed
+  Order.hasMany(models.OrderItem, {  
     foreignKey: 'orderId',
     as: 'orderItems'
   });
   };
-
-
 
   return Order;
 };

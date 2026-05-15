@@ -108,35 +108,40 @@ function validateCheckout() {
 
 function buildOrderPayload() {
   const cart = getCart();
-  const { subtotal, tax, deliveryFee, total } = calculateCheckoutTotals();
+
+  const subtotal = getCartTotal();
+  const tax = subtotal * 0.0825;
+  const deliveryFee = checkoutData.orderType === 'delivery' ? 4.99 : 0;
+  const total = subtotal + tax + deliveryFee;
 
   return {
     orderType: checkoutData.orderType,
     customerName: checkoutData.customerName.trim(),
-    customerEmail: checkoutData.customerEmail.trim(),
+    customerEmail: (checkoutData.customerEmail || '').trim(),
     customerPhone: checkoutData.customerPhone.trim(),
-    deliveryAddress: checkoutData.orderType === 'delivery'
-      ? checkoutData.deliveryAddress.trim()
-      : null,
-    deliveryInstructions: checkoutData.deliveryInstructions?.trim() || null,
+    deliveryAddress:
+      checkoutData.orderType === 'delivery'
+        ? (checkoutData.deliveryAddress || '').trim()
+        : null,
+    deliveryInstructions: (checkoutData.deliveryInstructions || '').trim() || null,
     paymentMethod: checkoutData.paymentMethod || 'cash',
-    paymentStatus: 'pending',
     status: 'pending',
-    items: cart.map((item) => ({
-      menuItemId: item.menuItemId || item.id || null,
-      name: item.name,
-      size: item.size || null,
-      price: parseFloat(getItemUnitPrice(item).toFixed(2)),
-      quantity: parseInt(item.quantity || 1, 10),
-      specialInstructions: item.specialInstructions || null,
-      addedToppings: item.addedToppings || [],
-      removedToppings: item.removedToppings || []
-    })),
+    paymentStatus: 'pending',
     subtotal: parseFloat(subtotal.toFixed(2)),
     tax: parseFloat(tax.toFixed(2)),
     deliveryFee: parseFloat(deliveryFee.toFixed(2)),
     total: parseFloat(total.toFixed(2)),
-    estimatedTime: 35
+    totalPrice: parseFloat(total.toFixed(2)),
+    items: cart.map((item) => ({
+      menuItemId: item.menuItemId || item.id,
+      name: item.name,
+      size: item.size || null,
+      price: parseFloat(item.basePrice ?? item.price ?? 0),
+      quantity: parseInt(item.quantity || 1, 10),
+      specialInstructions: item.specialInstructions || null,
+      addedToppings: Array.isArray(item.addedToppings) ? item.addedToppings : [],
+      removedToppings: Array.isArray(item.removedToppings) ? item.removedToppings : []
+    }))
   };
 }
 
@@ -498,12 +503,21 @@ export function initCheckout() {
         throw new Error('Order was created but response format was unexpected');
       }
 
-      console.log('✅ Order created successfully:', order);
+      const normalizedOrder = {
+        ...order,
+        items: order.items || order.OrderItems || [],
+        subtotal: parseFloat(order.subtotal ?? order.subTotal ?? 0),
+        tax: parseFloat(order.tax ?? 0),
+        deliveryFee: parseFloat(order.deliveryFee ?? 0),
+        total: parseFloat(order.total ?? order.totalPrice ?? 0)
+      };
+
+      console.log('✅ Order created successfully:', normalizedOrder);
 
       clearCart();
 
       if (typeof window.showOrderConfirmation === 'function') {
-        window.showOrderConfirmation(order);
+        window.showOrderConfirmation(normalizedOrder);
       } else {
         throw new Error('Order confirmation view is not available');
       }

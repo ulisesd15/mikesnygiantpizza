@@ -33,6 +33,18 @@ module.exports = (sequelize, DataTypes) => {
     specialInstructions: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+
+    // New customization fields
+    addedToppings: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: []
+    },
+    removedToppings: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: []
     }
   }, {
     tableName: 'orderItems',
@@ -40,10 +52,6 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   OrderItem.associate = (models) => {
-    console.log('OrderItem sees:', Object.keys(models));
-    console.log('models.Order exists?', !!models.Order);
-    console.log('models.MenuItem exists?', !!models.MenuItem);
-
     OrderItem.belongsTo(models.Order, {
       foreignKey: 'orderId',
       as: 'order'
