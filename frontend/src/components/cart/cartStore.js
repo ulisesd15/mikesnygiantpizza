@@ -1,25 +1,42 @@
 // frontend/utils/cartStore.js
 
-// Cart is an array of line items
-// Each item can optionally have toppings and a computed linePrice
-let cart = JSON.parse(localStorage.getItem('pizzaCart')) || [];
-let menuItems = []; // Shared with menu renderer
+const CART_STORAGE_KEY = 'pizzaCart';
 
-// Set menu items (called from menuRenderer)
+function loadCart() {
+  try {
+    const stored = localStorage.getItem(CART_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.warn('Unable to load cart from storage:', error);
+    return [];
+  }
+}
+
+function saveCart(cartData) {
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartData));
+  } catch (error) {
+    console.warn('Unable to save cart to storage:', error);
+  }
+}
+
+let cart = loadCart();
+let menuItems = [];
+
+// Set menu items from the menu renderer
 export function setMenuItems(items) {
   menuItems = items;
 }
 
-// 👇 CART OPERATIONS 👇
+// Cart operations
 
 // Supports:
-//   addToCart(123)  // legacy
-//   addToCart({ menuItemId, name, size, basePrice, addedToppings, removedToppings }) // new
+// addToCart(123)
+// addToCart({ menuItemId, name, size, basePrice, addedToppings, removedToppings })
 export function addToCart(itemOrConfig) {
   let config;
 
   if (typeof itemOrConfig === 'number') {
-    // Legacy usage: addToCart(menuItemId)
     const id = parseInt(itemOrConfig);
     const item = menuItems.find(i => i.id === id);
     if (!item) return false;
@@ -33,7 +50,6 @@ export function addToCart(itemOrConfig) {
       removedToppings: []
     };
   } else {
-    // New usage: addToCart({ ...config })
     config = itemOrConfig || {};
   }
 
@@ -46,7 +62,6 @@ export function addToCart(itemOrConfig) {
     removedToppings = []
   } = config;
 
-  // Build stable key so same pizza + same toppings stack
   const toppingsKey = JSON.stringify({
     add: addedToppings.map(t => t.id).sort(),
     remove: removedToppings.map(t => t.id).sort()
@@ -112,17 +127,6 @@ export function clearCart() {
 }
 
 
-// Helper to save and update UI
-function saveAndRefresh() {
-  localStorage.setItem('pizzaCart', JSON.stringify(cart));
-  updateCartCount();
-
-  // If drawer is open, re-render it
-  const drawer = document.getElementById('cart-drawer');
-  if (drawer && drawer.style.right === '0px') {
-    renderCart();
-  }
-}
 
 export function getCartCount() {
   return cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
@@ -143,7 +147,7 @@ export function getCart() {
   return cart;
 }
 
-// 👇 DOM FUNCTIONS (called by cartDrawer) 👇
+// Render cart contents inside the drawer
 export function renderCart() {
   const container = document.getElementById('cart-items');
   const subtotalEl = document.getElementById('cart-subtotal');
@@ -179,28 +183,62 @@ export function renderCart() {
               .join(', ')}</div>`
           : '';
 
+      // Safe encoding for data attributes
+      const encodedId = encodeURIComponent(item.id);
+
       return `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid #eee;">
-          <div>
-            <h4 style="margin: 0 0 0.25rem;">${item.name} ${
-        item.size ? `(${item.size})` : ''
-      }</h4>
-            <p style="margin: 0; color: #28a745; font-weight: bold;">$${unitPrice.toFixed(
-              2
-            )}</p>
-            ${added}
-            ${removed}
-          </div>
-          <div style="display: flex; align-items: center; gap: 1rem;">
-            <button onclick="window.updateCartQuantity('${item.id}', ${qty - 1})" style="width: 32px; height: 32px; border: 1px solid #ddd; background: white; border-radius: 4px;">−</button>
-            <span style="min-width: 24px; text-align: center; font-weight: bold;">${qty}</span>
-            <button onclick="window.updateCartQuantity('${item.id}', ${qty + 1})" style="width: 32px; height: 32px; border: 1px solid #ddd; background: white; border-radius: 4px;">+</button>
-            <button onclick="window.removeFromCart('${item.id}')" style="background: #dc3545; color: white; border: none; padding: 0.25rem 0.75rem; border-radius: 4px;">×</button>
-            <span style="font-weight: bold;">$${(
-              item.linePrice || unitPrice * qty
-            ).toFixed(2)}</span>
-          </div>
-        </div>
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid #eee;">
+  <div>
+    <h4 style="margin: 0 0 0.25rem;">${item.name} ${item.size ? `(${item.size})` : ''}</h4>
+    <p style="margin: 0; color: #28a745; font-weight: bold;">$${unitPrice.toFixed(2)}</p>
+    ${added}${removed}
+  </div>
+  <div style="display: flex; align-items: center; gap: 1rem;">
+    
+    <!-- Minus button -->
+    <button 
+      data-id="${encodedId}" data-qty="${qty - 1}"
+      onclick="window.updateCartQuantity(decodeURIComponent(this.dataset.id), parseInt(this.dataset.qty))"
+      style="
+        width: 32px; height: 32px; 
+        border: 1px solid #ddd; background: white; border-radius: 4px;
+        cursor: pointer; transition: all 0.2s ease;
+      "
+      onmouseover="this.style.background='#28a745'; this.style.borderColor='#000'; this.style.transform='scale(1.05)'"
+      onmouseout="this.style.background='white'; this.style.borderColor='#ddd'; this.style.transform='scale(1)'"
+    >−</button>
+    
+    <span style="min-width: 24px; text-align: center; font-weight: bold;">${qty}</span>
+    
+    <!-- Plus button -->
+    <button 
+      data-id="${encodedId}" data-qty="${qty + 1}"
+      onclick="window.updateCartQuantity(decodeURIComponent(this.dataset.id), parseInt(this.dataset.qty))"
+      style="
+        width: 32px; height: 32px; 
+        border: 1px solid #ddd; background: white; border-radius: 4px;
+        cursor: pointer; transition: all 0.2s ease;
+      "
+      onmouseover="this.style.background='#28a745'; this.style.borderColor='#000'; this.style.color='white'; this.style.transform='scale(1.05)'"
+      onmouseout="this.style.background='white'; this.style.borderColor='#ddd'; this.style.color='inherit'; this.style.transform='scale(1)'"
+    >+</button>
+    
+    <!-- Remove button -->
+    <button 
+      data-id="${encodedId}"
+      onclick="window.removeFromCart(decodeURIComponent(this.dataset.id))"
+      style="
+        background: #dc3545; color: white; border: none; 
+        padding: 0.25rem 0.75rem; border-radius: 4px;
+        cursor: pointer; transition: all 0.2s ease;
+      "
+      onmouseover="this.style.background='#c82333'; this.style.transform='scale(1.05)'; this.style.boxShadow='0 2px 8px rgba(220,53,69,0.4)'"
+      onmouseout="this.style.background='#dc3545'; this.style.transform='scale(1)'; this.style.boxShadow='none'"
+    >×</button>
+    
+    <span style="font-weight: bold;">$${(item.linePrice || unitPrice * qty).toFixed(2)}</span>
+  </div>
+</div>
       `;
     })
     .join('');
@@ -214,18 +252,28 @@ export function updateCartCount() {
   const countEl = document.getElementById('cart-count');
   if (countEl) countEl.textContent = count;
 
-  // Also update checkout button state in cart drawer
   if (window.updateCheckoutButton) {
     window.updateCheckoutButton();
   }
 }
 
-// 👇 UI HELPERS 👇
+// Save cart and refresh related UI
+function saveAndRefresh() {
+  saveCart(cart);
+  updateCartCount();
+
+  const drawer = document.getElementById('cart-drawer');
+  if (drawer && drawer.style.right === '0px') {
+    renderCart();
+  }
+}
+
+// Toast helper
 export function showToast(message) {
   const toast = document.createElement('div');
   toast.style.cssText = `
-    position: fixed; top: 2rem; right: 2rem; background: #28a745; 
-    color: white; padding: 1rem 2rem; border-radius: 8px; 
+    position: fixed; top: 2rem; right: 2rem; background: #28a745;
+    color: white; padding: 1rem 2rem; border-radius: 8px;
     z-index: 1001; transform: translateX(400px); transition: transform 0.3s;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   `;
@@ -238,7 +286,7 @@ export function showToast(message) {
   }, 2000);
 }
 
-// 👇 GLOBAL EXPORTS (for onclick handlers) 👇
+// Expose functions globally for inline onclick handlers
 export function initGlobalFunctions() {
   window.addToCart = addToCart;
   window.updateCartQuantity = updateCartQuantity;
@@ -247,9 +295,8 @@ export function initGlobalFunctions() {
   window.updateCartCount = updateCartCount;
   window.showToast = showToast;
   window.setMenuItems = setMenuItems;
-  window.getCartCount = getCartCount; // Export for cart drawer
-  window.getCart = getCart; // Export for checkout
-  window.getCartTotal = getCartTotal; // Export for checkout
-  window.clearCart = clearCart; // Export for checkout
+  window.getCartCount = getCartCount;
+  window.getCart = getCart;
+  window.getCartTotal = getCartTotal;
+  window.clearCart = clearCart;
 }
-
