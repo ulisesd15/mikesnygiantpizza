@@ -1,3 +1,4 @@
+// backend/models/pizzaToppingPrice
 module.exports = (sequelize, DataTypes) => {
   const PizzaToppingPrice = sequelize.define(
     'PizzaToppingPrice',

@@ -428,6 +428,7 @@ window.customizePizzaAndAdd = async (btn) => {
 };
 
 // Global UI handlers
+// Global UI handlers
 export function initMenuGlobalFunctions() {
   console.log('🔧 Initializing menu global functions...');
 
@@ -463,6 +464,19 @@ export function initMenuGlobalFunctions() {
     }
   };
 
+  // Backward-compatible alias if you start using one shared handler name
+  window.updateItemPrice = (select) => {
+    const itemId = select.dataset.itemId || select.dataset.groupId;
+    const priceEl =
+      document.getElementById(`item-price-${itemId}`) ||
+      document.getElementById(`pizza-price-${itemId}`);
+    const selectedOption = select.options[select.selectedIndex];
+
+    if (priceEl && selectedOption) {
+      priceEl.textContent = `$${parseFloat(selectedOption.dataset.price || 0).toFixed(2)}`;
+    }
+  };
+
   window.addToCartPizza = (btn) => {
     const groupId = btn.dataset.groupId;
     const sizeSelect = document.querySelector(`.size-selector[data-group-id="${groupId}"]`);
@@ -473,6 +487,259 @@ export function initMenuGlobalFunctions() {
         window.addToCart(selectedId);
       }
     }
+  };
+
+  // Universal customization launcher
+  window.customizeItemAndAdd = async (btn) => {
+    const rawItemId = btn?.dataset?.itemId;
+    const rawGroupId = btn?.dataset?.groupId;
+
+    const itemId = parseInt(rawItemId || rawGroupId, 10);
+    if (!Number.isInteger(itemId)) return;
+
+    const sizeSelect =
+      document.querySelector(`.size-selector[data-item-id="${itemId}"]`) ||
+      document.querySelector(`.size-selector[data-group-id="${itemId}"]`);
+
+    const selectedId = sizeSelect ? parseInt(sizeSelect.value, 10) : itemId;
+    if (!Number.isInteger(selectedId)) return;
+
+    try {
+      const res = await fetch(apiUrl(`/menu/${selectedId}/customization`));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const payload = await res.json();
+      const data = payload?.data || payload;
+
+      const itemInfo =
+        menuItems.find((i) => i.id === selectedId) ||
+        menuItems.find((i) => i.id === itemId) || {
+          id: selectedId,
+          menuItemId: selectedId,
+          name: 'Item',
+          size: '',
+          price: 0,
+          basePrice: 0
+        };
+
+      if (typeof window.showItemCustomizationModal === 'function') {
+        window.showItemCustomizationModal(data, itemInfo);
+        return;
+      }
+
+      window.dispatchEvent(
+        new CustomEvent('pizza-customize-open', {
+          detail: data
+        })
+      );
+      return;
+
+      if (window.addToCart) {
+        window.addToCart(selectedId);
+      }
+    } catch (err) {
+      console.error('Failed to load customization data:', err);
+
+      if (window.showToast) {
+        window.showToast('Customization is unavailable right now');
+      }
+
+      if (window.addToCart) {
+        window.addToCart(selectedId);
+      }
+    }
+  };
+
+  // Modal renderer hook
+  window.showItemCustomizationModal = (customData, itemInfo) => {
+    const existing = document.getElementById('item-customization-modal');
+    if (existing) existing.remove();
+
+    const basePrice = parseFloat(itemInfo.basePrice ?? itemInfo.price ?? 0);
+
+    const mandatory = Array.isArray(customData?.mandatory) ? customData.mandatory : [];
+    const optional = Array.isArray(customData?.optional) ? customData.optional : [];
+    const itemPrices = customData?.itemPrices || {};
+
+    const modal = document.createElement('div');
+    modal.id = 'item-customization-modal';
+    modal.dataset.basePrice = String(basePrice);
+    modal.dataset.menuItemId = String(itemInfo.id);
+
+    modal.innerHTML = `
+      <div style="
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.55);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+      ">
+        <div style="
+          width: 100%;
+          max-width: 560px;
+          max-height: 90vh;
+          overflow-y: auto;
+          background: white;
+          border-radius: 16px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        ">
+          <div style="padding: 1.25rem 1.25rem 1rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: start; gap: 1rem;">
+            <div>
+              <h2 style="margin: 0; color: #ff6b35; font-size: 1.35rem;">Customize ${itemInfo.name}</h2>
+              ${itemInfo.size ? `<p style="margin: 0.35rem 0 0; color: #666;">Size: ${itemInfo.size}</p>` : ''}
+            </div>
+            <button onclick="window.closeItemCustomizationModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;">×</button>
+          </div>
+
+          <div style="padding: 1.25rem;">
+            ${
+              mandatory.length
+                ? `
+              <div style="margin-bottom: 1.5rem;">
+                <h3 style="margin: 0 0 0.75rem; font-size: 1rem; color: #333;">Original ingredients</h3>
+                <p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: #777;">Included by default. Uncheck to remove.</p>
+                <div style="display: grid; gap: 0.5rem;">
+                  ${mandatory
+                    .map((ingredient) => {
+                      const price = parseFloat(itemPrices[ingredient.id] || ingredient.price || 0);
+                      return `
+                        <label class="custom-ingredient-row" data-role="mandatory" data-id="${ingredient.id}" data-name="${ingredient.name}" data-price="${price}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 0.9rem; border: 1px solid #e5e5e5; border-radius: 10px; cursor: pointer;">
+                          <span style="font-weight: 500; color: #333;">${ingredient.name}</span>
+                          <span style="display: flex; align-items: center; gap: 0.5rem;">
+                            <small style="color: #888;">Remove</small>
+                            <input type="checkbox" checked onchange="window.updateCustomizationPrice()" />
+                          </span>
+                        </label>
+                      `;
+                    })
+                    .join('')}
+                </div>
+              </div>
+            `
+                : ''
+            }
+
+            ${
+              optional.length
+                ? `
+              <div>
+                <h3 style="margin: 0 0 0.75rem; font-size: 1rem; color: #333;">Add extras</h3>
+                <p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: #777;">Select any extra ingredients you want.</p>
+                <div style="display: grid; gap: 0.5rem; max-height: 320px; overflow-y: auto;">
+                  ${optional
+                    .map((ingredient) => {
+                      const price = parseFloat(itemPrices[ingredient.id] || ingredient.price || 0);
+                      return `
+                        <label class="custom-ingredient-row" data-role="optional" data-id="${ingredient.id}" data-name="${ingredient.name}" data-price="${price}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 0.9rem; border: 1px solid #e5e5e5; border-radius: 10px; cursor: pointer;">
+                          <span style="font-weight: 500; color: #333;">${ingredient.name}</span>
+                          <span style="display: flex; align-items: center; gap: 0.5rem;">
+                            <small style="color: #28a745;">${price > 0 ? `+$${price.toFixed(2)}` : 'Included'}</small>
+                            <input type="checkbox" onchange="window.updateCustomizationPrice()" />
+                          </span>
+                        </label>
+                      `;
+                    })
+                    .join('')}
+                </div>
+              </div>
+            `
+                : ''
+            }
+          </div>
+
+          <div style="padding: 1rem 1.25rem 1.25rem; border-top: 1px solid #eee; background: #fafafa;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <span style="font-size: 0.95rem; color: #666;">Total</span>
+              <strong id="customization-total-price" style="font-size: 1.5rem; color: #28a745;">$${basePrice.toFixed(2)}</strong>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem;">
+              <button onclick="window.closeItemCustomizationModal()" style="flex: 1; background: #6c757d; color: white; border: none; padding: 0.9rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                Cancel
+              </button>
+              <button onclick="window.confirmCustomizedItem()" style="flex: 1; background: #ff6b35; color: white; border: none; padding: 0.9rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    window.__currentCustomizationItem = itemInfo;
+    window.updateCustomizationPrice();
+  };
+
+  window.closeItemCustomizationModal = () => {
+    const modal = document.getElementById('item-customization-modal');
+    if (modal) modal.remove();
+    window.__currentCustomizationItem = null;
+  };
+
+  window.updateCustomizationPrice = () => {
+    const modal = document.getElementById('item-customization-modal');
+    if (!modal) return;
+
+    const basePrice = parseFloat(modal.dataset.basePrice || 0);
+
+    const addedToppings = Array.from(
+      modal.querySelectorAll('.custom-ingredient-row[data-role="optional"] input:checked')
+    ).map((input) => {
+      const row = input.closest('.custom-ingredient-row');
+      return parseFloat(row?.dataset?.price || 0);
+    });
+
+    const extrasTotal = addedToppings.reduce((sum, price) => sum + price, 0);
+    const total = basePrice + extrasTotal;
+
+    const totalEl = document.getElementById('customization-total-price');
+    if (totalEl) {
+      totalEl.textContent = `$${total.toFixed(2)}`;
+    }
+  };
+
+  window.confirmCustomizedItem = () => {
+    const modal = document.getElementById('item-customization-modal');
+    const itemInfo = window.__currentCustomizationItem;
+
+    if (!modal || !itemInfo || !window.addToCart) return;
+
+    const addedToppings = Array.from(
+      modal.querySelectorAll('.custom-ingredient-row[data-role="optional"] input:checked')
+    ).map((input) => {
+      const row = input.closest('.custom-ingredient-row');
+      return {
+        id: parseInt(row.dataset.id, 10),
+        name: row.dataset.name,
+        price: parseFloat(row.dataset.price || 0)
+      };
+    });
+
+    const removedToppings = Array.from(
+      modal.querySelectorAll('.custom-ingredient-row[data-role="mandatory"] input:not(:checked)')
+    ).map((input) => {
+      const row = input.closest('.custom-ingredient-row');
+      return {
+        id: parseInt(row.dataset.id, 10),
+        name: row.dataset.name,
+        price: 0
+      };
+    });
+ 
+    window.addToCart({
+      menuItemId: itemInfo.id,
+      name: itemInfo.name,
+      size: itemInfo.size,
+      basePrice: parseFloat(itemInfo.basePrice ?? itemInfo.price ?? 0),
+      addedToppings,
+      removedToppings
+    });
+
+    window.closeItemCustomizationModal();
   };
 
   console.log('✅ Menu global functions initialized');

@@ -30,8 +30,6 @@ router.post('/', optionalAuth, async (req, res) => {
       total,
       estimatedTime
     } = req.body;
-
-    // Validation
     if (!customerName || !customerEmail || !customerPhone) {
       await transaction.rollback();
       return res.status(400).json({ 
@@ -39,7 +37,6 @@ router.post('/', optionalAuth, async (req, res) => {
         error: 'Customer name, email, and phone are required' 
       });
     }
-
     if (!items || items.length === 0) {
       await transaction.rollback();
       return res.status(400).json({ 
@@ -47,7 +44,6 @@ router.post('/', optionalAuth, async (req, res) => {
         error: 'Order must contain at least one item' 
       });
     }
-    
     if (!orderType || !['delivery', 'pickup'].includes(orderType)) {
       await transaction.rollback();
       return res.status(400).json({ 
@@ -55,7 +51,6 @@ router.post('/', optionalAuth, async (req, res) => {
         error: 'Valid order type required (delivery or pickup)' 
       });
     }
-    
     if (orderType === 'delivery' && !deliveryAddress) {
       await transaction.rollback();
       return res.status(400).json({ 
@@ -63,8 +58,6 @@ router.post('/', optionalAuth, async (req, res) => {
         error: 'Delivery address required for delivery orders' 
       });
     }
-
-    // Validate all menu items exist and are available
     for (const item of items) {
       const menuItem = await MenuItem.findByPk(item.menuItemId);
       if (!menuItem) {
@@ -83,10 +76,8 @@ router.post('/', optionalAuth, async (req, res) => {
       }
     }
 
-    // Generate order number
     const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-    // Create order
     const orderData = {
       orderNumber,
       userId: req.user ? req.user.id : null,
@@ -108,7 +99,6 @@ router.post('/', optionalAuth, async (req, res) => {
 
     const order = await Order.create(orderData, { transaction });
 
-    // Create order items
     const orderItems = items.map(item => ({
       orderId: order.id,
       menuItemId: item.menuItemId,
@@ -121,10 +111,8 @@ router.post('/', optionalAuth, async (req, res) => {
 
     await OrderItem.bulkCreate(orderItems, { transaction });
 
-    // ✅ COMMIT TRANSACTION
     await transaction.commit();
 
-    // ✅ FETCH COMPLETE ORDER AFTER COMMIT
     const createdOrder = await Order.findByPk(order.id, {
       include: [
         {
@@ -141,7 +129,6 @@ router.post('/', optionalAuth, async (req, res) => {
 
     console.log('✅ Order created:', createdOrder.orderNumber);
 
-    // ✅ RETURN SUCCESS - DON'T ROLLBACK HERE
     return res.status(201).json({
       success: true,
       message: 'Order created successfully',
