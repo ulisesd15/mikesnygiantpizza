@@ -1,11 +1,11 @@
-// main.js - Updated with Google OAuth and Checkout Integration
-import { renderCartDrawer, initCartDrawer } from './utils/cartDrawer.js';
-import { initGlobalFunctions } from './utils/cartStore.js';
-import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './components/menuRenderer.jsx';
-import { renderAdminTab, initAdminPanel, loadAdminMenu } from './components/adminPanel.jsx';
-import { renderOrdersTab, initOrdersTab } from './components/ordersTab.jsx';
-import { renderCheckoutPage, initCheckout } from './components/checkout/CheckoutPage.jsx';
-import { renderOrderConfirmation, initOrderConfirmation } from './components/orders/OrderConfirmation.jsx';
+// main.jsx
+import { renderCartDrawer, initCartDrawer } from './src/components/cart/cartDrawer.js';
+import { initGlobalFunctions } from './src/components/cart/cartStore.js';
+import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './src/components/menuRenderer.jsx';
+import { renderAdminTab, initAdminPanel, loadAdminMenu } from './src/components/admin/adminPanel.jsx';
+import { renderOrdersTab, initOrdersTab } from './src/components/ordersTab.jsx';
+import { renderCheckoutPage, initCheckout } from './src/components/checkout/CheckoutPage.jsx';
+import { renderOrderConfirmation, initOrderConfirmation } from './src/components/orders/OrderConfirmation.jsx';
 
 import { checkAuth, updateAuthUI } from './auth.jsx'; 
 
@@ -124,8 +124,8 @@ function mainUI() {
       ${renderCartDrawer()}
 
       <!-- Pizza Customization Modal -->
-      <div id="pizza-custom-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000;">
-        <div style="background: white; margin: 5% auto; padding: 1.5rem; border-radius: 12px; max-width: 500px; max-height: 90vh; overflow-y: auto; position: relative;">
+      <div id="pizza-custom-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 1rem;">
+  <div style="background: white; width: min(500px, 100%); padding: 1.5rem; border-radius: 12px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.25);">
           <button onclick="window.hidePizzaCustom()" style="position: absolute; top: 0.75rem; right: 0.75rem; background: none; border: none; font-size: 1.25rem; cursor: pointer;">×</button>
           <div id="pizza-custom-content"></div>
         </div>
@@ -285,60 +285,115 @@ window.togglePasswordVisibility = () => {
 
 let currentCustomization = null;
 
-window.showPizzaCustom = (data) => {
-  currentCustomization = data;
+window.showPizzaCustom = (data = {}) => {
+  const safeData = data ?? {};
+
+  const menuItem = safeData.menuItem ?? {};
+  const defaultToppings = Array.isArray(safeData.mandatory) ? safeData.mandatory : [];
+  const availableToppings = Array.isArray(safeData.optional) ? safeData.optional : [];
+  const itemPrices = safeData.itemPrices ?? {};
+  const basePrice = parseFloat(menuItem.basePrice ?? 0);
+
+  currentCustomization = {
+    menuItem,
+    defaultToppings,
+    availableToppings,
+    itemPrices
+  };
+
   const modal = document.getElementById('pizza-custom-modal');
   const content = document.getElementById('pizza-custom-content');
   if (!modal || !content) return;
 
-  const { menuItem, defaultToppings, availableToppings } = data;
+  console.log('showPizzaCustom normalized:', currentCustomization);
 
   content.innerHTML = `
-    <h3 style="margin-top: 0;">Customize ${menuItem.name} (${menuItem.size})</h3>
-    <p>Base price: $${menuItem.basePrice.toFixed(2)}</p>
+    <div style="display:flex; flex-direction:column; gap:1rem;">
+      <div>
+        <h3 style="margin: 0 0 0.35rem; color:#ff6b35;">
+          Customize ${menuItem.name || 'Pizza'} ${menuItem.size ? `(${menuItem.size})` : ''}
+        </h3>
+        <p style="margin:0; color:#666;">Base price: $${basePrice.toFixed(2)}</p>
+      </div>
 
-    <h4>Remove toppings</h4>
-    <div>
-      ${defaultToppings.map(t => `
-        <label style="display: block; margin-bottom: 0.25rem;">
-          <input type="checkbox" class="remove-topping" value="${t.id}" ${t.isRemovable ? '' : 'disabled'}>
-          ${t.name} ${t.isRemovable ? '' : '(required)'}
-        </label>
-      `).join('') || '<p style="color:#777;">No removable default toppings.</p>'}
-    </div>
+      <div style="padding:0.9rem; background:#f8f9fa; border-radius:10px;">
+        <h4 style="margin:0 0 0.75rem;">Remove toppings</h4>
+        ${
+          defaultToppings.length
+            ? defaultToppings.map(t => `
+              <label style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem; color:#333;">
+                <input
+                  type="checkbox"
+                  class="remove-topping"
+                  value="${t.id}"
+                  ${t.isRemovable ? '' : 'disabled'}
+                >
+                <span>${t.name} ${t.isRemovable ? '' : '<span style="color:#888;">(required)</span>'}</span>
+              </label>
+            `).join('')
+            : '<p style="margin:0; color:#777;">No removable default toppings.</p>'
+        }
+      </div>
 
-    <h4 style="margin-top: 1rem;">Add extra toppings</h4>
-    <div>
-      ${availableToppings.map(t => `
-        <label style="display: block; margin-bottom: 0.25rem;">
-          <input type="checkbox" class="add-topping" value="${t.id}" data-price="${t.price}">
-          ${t.name} (+$${t.price.toFixed(2)})
-        </label>
-      `).join('') || '<p style="color:#777;">No extra toppings available.</p>'}
-    </div>
+      <div style="padding:0.9rem; background:#f8f9fa; border-radius:10px;">
+        <h4 style="margin:0 0 0.75rem;">Add extra toppings</h4>
+        ${
+          availableToppings.length
+            ? availableToppings.map(t => {
+              const price = parseFloat(t.price ?? itemPrices[t.id] ?? 0);
+              return `
+                <label style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; margin-bottom:0.5rem; color:#333;">
+                  <span style="display:flex; align-items:center; gap:0.5rem;">
+                    <input
+                      type="checkbox"
+                      class="add-topping"
+                      value="${t.id}"
+                      data-price="${price}"
+                    >
+                    ${t.name}
+                  </span>
+                  <span style="color:#28a745; font-weight:600;">+$${price.toFixed(2)}</span>
+                </label>
+              `;
+            }).join('')
+            : '<p style="margin:0; color:#777;">No extra toppings available.</p>'
+        }
+      </div>
 
-    <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #ddd;">
-      <p id="custom-price" style="font-weight: 600;">
-        Total: $${menuItem.basePrice.toFixed(2)}
-      </p>
-      <button onclick="window.confirmPizzaCustom()" style="width: 100%; background:#ff6b35; color:white; border:none; padding:0.75rem; border-radius:8px; cursor:pointer; font-size:1rem; font-weight:600;">
-        Add to Cart
-      </button>
+      <div style="padding-top:0.75rem; border-top:1px solid #ddd;">
+        <p id="custom-price" style="font-weight:700; font-size:1.1rem; margin:0 0 0.75rem;">
+          Total: $${basePrice.toFixed(2)}
+        </p>
+        <button
+          onclick="window.confirmPizzaCustom()"
+          style="width:100%; background:#ff6b35; color:white; border:none; padding:0.85rem; border-radius:8px; cursor:pointer; font-size:1rem; font-weight:600;"
+        >
+          Add to Cart
+        </button>
+      </div>
     </div>
   `;
 
-  modal.style.display = 'block';
+  modal.style.display = 'flex';
 
-  // Attach listeners to recalc price
   const recalc = () => {
-    if (!currentCustomization) return;
-    let total = currentCustomization.menuItem.basePrice;
-    document.querySelectorAll('#pizza-custom-content .add-topping:checked').forEach(cb => {
-      total += parseFloat(cb.dataset.price || '0');
-    });
-    document.getElementById('custom-price').textContent = `Total: $${total.toFixed(2)}`;
+    const currentBasePrice = parseFloat(currentCustomization?.menuItem?.basePrice ?? 0);
+    let total = currentBasePrice;
+
+    document
+      .querySelectorAll('#pizza-custom-content .add-topping:checked')
+      .forEach(cb => {
+        total += parseFloat(cb.dataset.price || '0');
+      });
+
+    const priceEl = document.getElementById('custom-price');
+    if (priceEl) {
+      priceEl.textContent = `Total: $${total.toFixed(2)}`;
+    }
   };
-  document.querySelectorAll('#pizza-custom-content .add-topping')
+
+  document
+    .querySelectorAll('#pizza-custom-content .add-topping')
     .forEach(cb => cb.addEventListener('change', recalc));
 };
 
@@ -351,13 +406,19 @@ window.hidePizzaCustom = () => {
 window.confirmPizzaCustom = () => {
   if (!currentCustomization || !window.addToCart) return;
 
-  const { menuItem } = currentCustomization;
+  const menuItem = currentCustomization.menuItem ?? {};
+  const defaultToppings = Array.isArray(currentCustomization.defaultToppings)
+    ? currentCustomization.defaultToppings
+    : [];
+  const availableToppings = Array.isArray(currentCustomization.availableToppings)
+    ? currentCustomization.availableToppings
+    : [];
 
   const removed = Array.from(
     document.querySelectorAll('#pizza-custom-content .remove-topping:checked')
   ).map(cb => {
     const id = parseInt(cb.value, 10);
-    const t = currentCustomization.defaultToppings.find(x => x.id === id);
+    const t = defaultToppings.find(x => x.id === id);
     return t ? { id: t.id, name: t.name } : null;
   }).filter(Boolean);
 
@@ -366,7 +427,7 @@ window.confirmPizzaCustom = () => {
   ).map(cb => {
     const id = parseInt(cb.value, 10);
     const price = parseFloat(cb.dataset.price || '0');
-    const t = currentCustomization.availableToppings.find(x => x.id === id);
+    const t = availableToppings.find(x => x.id === id);
     return t ? { id: t.id, name: t.name, price } : null;
   }).filter(Boolean);
 
@@ -374,13 +435,27 @@ window.confirmPizzaCustom = () => {
     menuItemId: menuItem.id,
     name: menuItem.name,
     size: menuItem.size,
-    basePrice: menuItem.basePrice,
+    basePrice: parseFloat(menuItem.basePrice ?? 0),
     addedToppings: added,
     removedToppings: removed
   });
 
   window.hidePizzaCustom();
 };
+
+window.addEventListener('click', (event) => {
+  const modal = document.getElementById('pizza-custom-modal');
+  if (modal && event.target === modal) {
+    window.hidePizzaCustom();
+  }
+});
+
+window.addEventListener('keydown', (event) => {
+  const modal = document.getElementById('pizza-custom-modal');
+  if (event.key === 'Escape' && modal && modal.style.display === 'flex') {
+    window.hidePizzaCustom();
+  }
+});
 
 
 
@@ -429,46 +504,34 @@ function loadGoogleSignIn() {
 
 async function loadApp() {
   console.log('🚀 Starting app load...');
-  
-  // 1. Render HTML FIRST
-  document.getElementById('app').innerHTML = mainUI();
+
+  const appEl = document.getElementById('root');
+  if (!appEl) {
+    throw new Error('Missing #app container in index.html');
+  }
+
+  appEl.innerHTML = mainUI();
   console.log('✅ HTML rendered');
-  
-  // 2. Load Google Sign-In
+
   loadGoogleSignIn();
-  
-  // 3. Initialize global functions
   initMenuGlobalFunctions();
   initCartDrawer();
   initGlobalFunctions();
-  console.log('✅ Global functions initialized');
-  
-  // 4. Load menu data
-  console.log('🔄 Loading menu...');
+
   await loadMenu();
-  console.log('✅ Menu loaded');
-  
-  // 5. Check authentication SAFELY
+
   try {
     if (typeof checkAuth === 'function') {
-      console.log('🔍 checkAuth available');
       await checkAuth();
-    } else {
-      console.warn('❌ checkAuth not imported - skipping');
     }
     await updateAuthUI();
   } catch (error) {
     console.warn('⚠️ Auth check failed:', error.message);
   }
-  console.log('🔍 AFTER AUTH - window.currentUser:', window.currentUser);
 
-  
-  
-  // 6. Update cart drawer
   updateCartDrawerWithCheckout();
-  
-  console.log('✅ App fully loaded!');
 }
+
 
 // Add checkout button to cart drawer
 function updateCartDrawerWithCheckout() {
@@ -488,7 +551,7 @@ function updateCartDrawerWithCheckout() {
 // Start the app
 loadApp().catch(error => {
   console.error('❌ App failed to load:', error);
-  document.getElementById('app').innerHTML = `
+  document.getElementById('root').innerHTML = `
     <div style="text-align: center; padding: 3rem; color: #dc3545;">
       <h2>Failed to load application</h2>
       <p>${error.message}</p>
@@ -496,3 +559,4 @@ loadApp().catch(error => {
     </div>
   `;
 });
+

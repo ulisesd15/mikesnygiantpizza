@@ -37,9 +37,8 @@ module.exports = (sequelize, DataTypes) => {
     tableName: 'MenuItems'
   });
 
-  // Keep your existing associate EXACTLY as-is ✅
 MenuItem.associate = (models) => {
-  MenuItem.hasMany(models.orderItem, {  // lowercase 'o'
+  MenuItem.hasMany(models.OrderItem, {  // lowercase 'o'
     foreignKey: 'menuItemId',
     as: 'OrderItems',
     onDelete: 'NO ACTION'
@@ -48,7 +47,7 @@ MenuItem.associate = (models) => {
     through: 'menu_item_default_toppings',
     foreignKey: 'menuItemId',
     otherKey: 'ingredientId',
-    as: 'defaultIngredients'  
+    as: 'defaultIngredients'
   });
 };
 

@@ -1,7 +1,3 @@
-
-
-const { DataTypes } = require('sequelize');
-
 module.exports = (sequelize, DataTypes) => {
   const OrderItem = sequelize.define('OrderItem', {
     id: { 
@@ -9,7 +5,6 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true, 
       autoIncrement: true 
     },
-    
     orderId: {
       type: DataTypes.INTEGER,
       allowNull: false
@@ -18,7 +13,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false
     },
-    
     name: {
       type: DataTypes.STRING,
       allowNull: false
@@ -31,7 +25,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false
     },
-    
     quantity: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -40,6 +33,18 @@ module.exports = (sequelize, DataTypes) => {
     specialInstructions: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+
+    // New customization fields
+    addedToppings: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: []
+    },
+    removedToppings: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: []
     }
   }, {
     tableName: 'orderItems',
@@ -47,19 +52,16 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   OrderItem.associate = (models) => {
-    OrderItem.belongsTo(models.order, {      // 'order' from Loaded models
+    OrderItem.belongsTo(models.Order, {
       foreignKey: 'orderId',
       as: 'order'
     });
 
-    OrderItem.belongsTo(models.MenuItem, {   // 'MenuItem' from Loaded models
+    OrderItem.belongsTo(models.MenuItem, {
       foreignKey: 'menuItemId',
       as: 'menuItem'
     });
   };
-
-
-
 
   return OrderItem;
 };
