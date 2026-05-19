@@ -1,196 +1,396 @@
 // ordersTab.jsx
 
-//VIEW SHELL
-//Renders the base tab container and the initial “Loading orders...” placeholder.
+const API_BASE =
+  import.meta?.env?.VITE_API_URL ||
+  (window.location.hostname === 'localhost'
+    ? 'http://localhost:5001/api'
+    : '/api');
+
+const money = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+
+function formatMoney(value) {
+  return money.format(Number(value || 0));
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function getStorage() {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function parseJson(value, fallback = []) {
+  try {
+    const parsed = JSON.parse(value);
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function toValidDate(value) {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? date : null;
+}
+
+function formatOrderDate(value) {
+  const date = toValidDate(value);
+  if (!date) return 'Unknown date';
+
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
+function getStatusInfo(status) {
+  const key = String(status || 'pending').toLowerCase();
+
+  const map = {
+    pending: { bg: '#fff3cd', border: '#f59e0b', text: '#92400e', emoji: '⏳', label: 'Pending' },
+    accepted: { bg: '#dbeafe', border: '#2563eb', text: '#1d4ed8', emoji: '👍', label: 'Accepted' },
+    preparing: { bg: '#dbeafe', border: '#2563eb', text: '#1d4ed8', emoji: '👨‍🍳', label: 'Preparing' },
+    ready: { bg: '#d1fae5', border: '#10b981', text: '#065f46', emoji: '✅', label: 'Ready' },
+    out_for_delivery: { bg: '#e0f2fe', border: '#0891b2', text: '#0e7490', emoji: '🚚', label: 'Out for delivery' },
+    delivered: { bg: '#d1fae5', border: '#10b981', text: '#065f46', emoji: '🚚', label: 'Delivered' },
+    completed: { bg: '#d1fae5', border: '#10b981', text: '#065f46', emoji: '✅', label: 'Completed' },
+    cancelled: { bg: '#fee2e2', border: '#dc2626', text: '#991b1b', emoji: '❌', label: 'Cancelled' }
+  };
+
+  return map[key] || map.pending;
+}
+
+function normalizeOrderItem(item = {}) {
+  const menuItem = item.menuItem || item.MenuItem || {};
+
+  const quantity = Number(item.quantity || 1);
+  const price = Number(
+    item.price ??
+    item.unitPrice ??
+    menuItem.price ??
+    0
+  );
+
+  return {
+    name: item.name || menuItem.name || 'Menu Item',
+    size: item.size || menuItem.size || '',
+    price,
+    quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1
+  };
+}
+
+function normalizeOrder(order = {}) {
+  const rawItems = order.items || order.orderItems || order.OrderItems || [];
+  const items = Array.isArray(rawItems) ? rawItems.map(normalizeOrderItem) : [];
+
+  const computedTotal = items.reduce((sum, item) => {
+    return sum + item.price * item.quantity;
+  }, 0);
+
+  return {
+    id: order.id || '',
+    orderNumber: order.orderNumber || order.id || `ORD-${Date.now()}`,
+    userId: order.userId ?? order.UserId ?? order.user?.id ?? order.User?.id ?? '',
+    customerName: order.customerName || order.user?.name || order.User?.name || 'Customer',
+    customerEmail: order.customerEmail || order.user?.email || order.User?.email || '',
+    customerPhone: order.customerPhone || order.phone || order.user?.phone || order.User?.phone || '',
+    orderType: order.orderType || 'pickup',
+    deliveryAddress: order.deliveryAddress || order.address || '',
+    status: String(order.status || 'completed').toLowerCase(),
+    total: Number(order.total ?? order.totalPrice ?? computedTotal ?? 0),
+    createdAt: order.createdAt || order.updatedAt || new Date().toISOString(),
+    items
+  };
+}
+
+function renderStateCard({ icon, title, message, action, actionLabel, tone = 'neutral' }) {
+  const tones = {
+    neutral: {
+      bg: '#ffffff',
+      border: '#e5e7eb',
+      title: '#111827',
+      text: '#6b7280',
+      button: '#ff6b35'
+    },
+    warning: {
+      bg: '#fffbeb',
+      border: '#fcd34d',
+      title: '#92400e',
+      text: '#92400e',
+      button: '#2563eb'
+    },
+    danger: {
+      bg: '#fef2f2',
+      border: '#fca5a5',
+      title: '#991b1b',
+      text: '#991b1b',
+      button: '#2563eb'
+    }
+  };
+
+  const palette = tones[tone] || tones.neutral;
+
+  return `
+    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: ${palette.bg}; border-radius: 14px; border: 1px solid ${palette.border};">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">${icon}</div>
+      <h3 style="color: ${palette.title}; margin: 0 0 0.5rem;">${escapeHtml(title)}</h3>
+      <p style="color: ${palette.text}; margin: 0 0 1.5rem;">${escapeHtml(message)}</p>
+      ${
+        action && actionLabel
+          ? `
+            <button
+              data-action="${escapeHtml(action)}"
+              style="background: ${palette.button}; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 10px; font-size: 1rem; cursor: pointer; font-weight: 700;"
+            >
+              ${escapeHtml(actionLabel)}
+            </button>
+          `
+          : ''
+      }
+    </div>
+  `;
+}
+
+// VIEW SHELL
 export function renderOrdersTab() {
   return `
     <div id="orders-tab" class="tab-content" style="display: none;">
-      <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #f0f8ff, #e6f7ff); border-radius: 12px; margin-bottom: 2rem; border: 2px solid #007bff;">
-        <h2 style="color: #007bff; margin: 0 0 0.5rem;">📋 My Order History</h2>
-        <p style="color: #666; margin: 0;">Track your delicious pizza orders</p>
+      <div>
       </div>
-      <div id="orders-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;">
+
+      <div
+        id="orders-grid"
+        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1.25rem;"
+      >
         <div style="text-align: center; padding: 3rem; color: #666;">Loading orders... 🍕</div>
       </div>
     </div>
   `;
 }
-//Renders the order list into #orders-grid.
+
+// RENDER LIST
 export function renderOrders(orders) {
   const container = document.getElementById('orders-grid');
   if (!container) return;
-  
+
   if (!orders || orders.length === 0) {
-    container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: #666;">No orders found 🍕</div>';
+    container.innerHTML = renderStateCard({
+      icon: '🍕',
+      title: 'No orders yet',
+      message: 'Start by ordering something from the menu.',
+      action: 'showMenu',
+      actionLabel: 'Browse Menu'
+    });
     return;
   }
-  
-  container.innerHTML = orders.map(order => orderCard(order)).join('');
+
+  container.innerHTML = orders.map((order) => orderCard(order)).join('');
 }
-//Builds one order card’s HTML and normalizes incoming order data for display.
+
+// CARD
 export function orderCard(order) {
-  // ✅ Transform localStorage data to match expected format
-  const safeOrder = {
-    id: order.id || '',
-    orderNumber: order.orderNumber || `ORD-${Date.now()}`,
-    userId: order.userId || '',
-    customerName: order.customerName || 'Customer',
-    customerEmail: order.customerEmail || '',
-    customerPhone: order.customerPhone || '',
-    orderType: order.orderType || 'pickup',
-    deliveryAddress: order.deliveryAddress || '',
-    status: order.status || 'completed',
-    total: parseFloat(order.total) || 0,
-    createdAt: order.createdAt || new Date().toISOString(),
-    items: (order.items || order.orderItems || []).map(item => ({
-      name: item.name || 'Pizza',
-      size: item.size || '',
-      price: parseFloat(item.price) || 0,
-      quantity: item.quantity || 1
-    }))
-  };
-  
-  const statusColors = {
-    pending: { bg: '#fff3cd', border: '#ffc107', text: '#856404', emoji: '⏳' },
-    preparing: { bg: '#cfe2ff', border: '#0d6efd', text: '#084298', emoji: '👨‍🍳' },
-    ready: { bg: '#d1e7dd', border: '#198754', text: '#0f5132', emoji: '✅' },
-    delivered: { bg: '#d1e7dd', border: '#198754', text: '#0f5132', emoji: '🚚' },
-    completed: { bg: '#d1e7dd', border: '#198754', text: '#0f5132', emoji: '✅' }
-  };
-  
-  const statusInfo = statusColors[safeOrder.status] || statusColors.completed;
-  const orderDate = new Date(safeOrder.createdAt);
-  const formattedDate = orderDate.toLocaleString('en-US', { 
-    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
-  });
-  
+  const safeOrder = normalizeOrder(order);
+  const statusInfo = getStatusInfo(safeOrder.status);
+  const formattedDate = formatOrderDate(safeOrder.createdAt);
+
   return `
-    <div class="menu-card" style="border-left: 5px solid ${statusInfo.border}; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 1.5rem;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <div
+      class="menu-card"
+      style="background: white; border: 1px solid #e5e7eb; border-top: 5px solid ${statusInfo.border}; border-radius: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 1.25rem;"
+    >
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
         <div>
-          <h3 style="margin: 0; color: #333; font-size: 1.2rem;">Order #${safeOrder.orderNumber}</h3>
-          <p style="color: #999; margin: 0.25rem 0 0; font-size: 0.85rem;">${formattedDate}</p>
+          <h3 style="margin: 0; color: #111827; font-size: 1.15rem;">Order #${escapeHtml(safeOrder.orderNumber)}</h3>
+          <p style="color: #6b7280; margin: 0.3rem 0 0; font-size: 0.9rem;">${escapeHtml(formattedDate)}</p>
         </div>
-        <div style="background: ${statusInfo.bg}; color: ${statusInfo.text}; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.85rem; border: 2px solid ${statusInfo.border};">
-          ${statusInfo.emoji} ${safeOrder.status.toUpperCase()}
+
+        <div style="background: ${statusInfo.bg}; color: ${statusInfo.text}; padding: 0.5rem 0.9rem; border-radius: 999px; font-weight: 700; font-size: 0.82rem; border: 1px solid ${statusInfo.border};">
+          ${statusInfo.emoji} ${escapeHtml(statusInfo.label)}
         </div>
       </div>
-      
-      <div style="background: #f8f9fa; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
-        <div style="font-weight: 600; color: #666; font-size: 0.9rem;">
+
+      <div style="background: #f8fafc; padding: 0.8rem 1rem; border-radius: 10px; margin-bottom: 1rem; border: 1px solid #eef2f7;">
+        <div style="font-weight: 700; color: #374151; font-size: 0.95rem;">
           ${safeOrder.orderType === 'delivery' ? '🚚 Delivery' : '🏪 Pickup'}
         </div>
-        ${safeOrder.orderType === 'delivery' && safeOrder.deliveryAddress ? `<div style="font-size: 0.85rem; color: #999; margin-top: 0.25rem;">${safeOrder.deliveryAddress}</div>` : ''}
+        ${
+          safeOrder.orderType === 'delivery' && safeOrder.deliveryAddress
+            ? `<div style="font-size: 0.88rem; color: #6b7280; margin-top: 0.35rem;">${escapeHtml(safeOrder.deliveryAddress)}</div>`
+            : ''
+        }
       </div>
-      
-      <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-        <h4 style="margin: 0 0 0.75rem; font-size: 0.9rem; color: #666;">Order Items:</h4>
-        ${safeOrder.items.map(item => `
-          <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e9ecef;">
-            <div style="flex: 1;">
-              <span style="font-weight: 600;">🍕 ${item.name}</span>
-              ${item.size ? `<span style="color: #666; font-size: 0.85rem;"> (${item.size})</span>` : ''}
-              <span style="color: #999; font-size: 0.85rem;"> x${item.quantity}</span>
-            </div>
-            <span style="font-weight: 600; color: #28a745;">$${(item.price * item.quantity).toFixed(2)}</span>
-          </div>
-        `).join('') || '<p style="color: #999; font-style: italic;">No items</p>'}
+
+      <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; margin-bottom: 1rem; border: 1px solid #eef2f7;">
+        <h4 style="margin: 0 0 0.75rem; font-size: 0.92rem; color: #4b5563;">Order Items</h4>
+        ${
+          safeOrder.items.length
+            ? safeOrder.items.map((item, index) => `
+              <div style="display: flex; justify-content: space-between; gap: 1rem; padding: 0.55rem 0; ${index < safeOrder.items.length - 1 ? 'border-bottom: 1px solid #e5e7eb;' : ''}">
+                <div style="flex: 1; min-width: 0;">
+                  <span style="font-weight: 700; color: #111827;">🍕 ${escapeHtml(item.name)}</span>
+                  ${item.size ? `<span style="color: #6b7280; font-size: 0.85rem;"> (${escapeHtml(item.size)})</span>` : ''}
+                  <span style="color: #9ca3af; font-size: 0.85rem;"> x${item.quantity}</span>
+                </div>
+                <span style="font-weight: 700; color: #16a34a; white-space: nowrap;">${formatMoney(item.price * item.quantity)}</span>
+              </div>
+            `).join('')
+            : '<p style="color: #9ca3af; font-style: italic; margin: 0;">No items found</p>'
+        }
       </div>
-      
-      <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 2px solid ${statusInfo.border};">
-        <span style="font-weight: 600; font-size: 1.1rem; color: #333;">Total:</span>
-        <span style="font-weight: bold; font-size: 1.3rem; color: #28a745;">$${safeOrder.total.toFixed(2)}</span>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+        <span style="font-weight: 700; font-size: 1rem; color: #111827;">Total</span>
+        <span style="font-weight: 800; font-size: 1.25rem; color: #16a34a;">${formatMoney(safeOrder.total)}</span>
       </div>
-      
-      <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee; font-size: 0.85rem; color: #999;">
-        <div>👤 ${safeOrder.customerName}</div>
-        <div>📧 ${safeOrder.customerEmail}</div>
+
+      <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f3f4f6; font-size: 0.88rem; color: #6b7280;">
+        <div>👤 ${escapeHtml(safeOrder.customerName)}</div>
+        ${safeOrder.customerEmail ? `<div>📧 ${escapeHtml(safeOrder.customerEmail)}</div>` : ''}
+        ${safeOrder.customerPhone ? `<div>📞 ${escapeHtml(safeOrder.customerPhone)}</div>` : ''}
       </div>
     </div>
   `;
 }
 
-//DATA ACCESS
-//Reads pizzaOrders from localStorage and filters orders for the current user.
+// DATA ACCESS
 function getUserOrders(userId) {
   try {
-    const ordersData = localStorage.getItem('pizzaOrders');
+    const storage = getStorage();
+    const ordersData = storage?.getItem('pizzaOrders');
     if (!ordersData) return [];
-    
-    const allOrders = JSON.parse(ordersData) || [];
-    console.log('🔍 Raw orders data:', allOrders); // DEBUG
-    
-    // ✅ FIXED: Handle both string/number userId and proper filtering
-    const userOrders = allOrders.filter(order => 
-      order.userId == userId ||  // Loose equality for string/number
-      order.userId === parseInt(userId)  // Strict numeric match
-    );
-    
-    console.log(`✅ Filtered ${userOrders.length} orders for userId: ${userId}`);
-    return userOrders;
+
+    const allOrders = parseJson(ordersData, []);
+    if (!Array.isArray(allOrders)) return [];
+
+    const normalizedUserId = String(userId);
+
+    const userOrders = allOrders.filter((order) => {
+      const orderUserId =
+        order?.userId ??
+        order?.UserId ??
+        order?.user?.id ??
+        order?.User?.id;
+
+      return String(orderUserId) === normalizedUserId;
+    });
+
+    return userOrders.map(normalizeOrder);
   } catch (error) {
     console.error('❌ Error parsing orders:', error);
     return [];
   }
 }
-//Calls the backend /orders/my-orders endpoint using the auth token.
+
 async function fetchUserOrders() {
-  const token = localStorage.getItem('token');
-  if (!token) return [];
-  
-  const apiBase = window.location.hostname === 'localhost' ? 'http://localhost:5001' : '/api';
-  
-  const response = await fetch(`${apiBase}/orders/my-orders`, {
-    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+  const storage = getStorage();
+  const token = storage?.getItem('token');
+
+  if (!token) {
+    return [];
+  }
+
+  const response = await fetch(`${API_BASE}/orders/my-orders`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json'
+    }
   });
-  
-  if (!response.ok) throw new Error(`API Error: ${response.status}`);
-  
-  const data = await response.json();
-  return data.orders || data.data?.orders || [];
+
+  let payload = null;
+
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    const message =
+      payload?.error ||
+      payload?.message ||
+      `API Error: ${response.status}`;
+
+    if (response.status === 401) {
+      throw new Error('Please log in again.');
+    }
+
+    if (response.status === 403) {
+      throw new Error('You are not allowed to view these orders.');
+    }
+
+    if (response.status === 404) {
+      throw new Error('Orders route not found.');
+    }
+
+    throw new Error(message);
+  }
+
+  const orders =
+    payload?.orders ||
+    payload?.data?.orders ||
+    payload?.data ||
+    [];
+
+  return Array.isArray(orders) ? orders.map(normalizeOrder) : [];
 }
 
-//INTERACTION WIRING
-//Connect UI elements to actions.
+// INTERACTION WIRING
 function attachEventListeners(container) {
-  // ✅ FIXED: Event delegation instead of inline onclick
   container.querySelector('[data-action="showAuth"]')?.addEventListener('click', () => {
     if (typeof window.showAuth === 'function') window.showAuth();
   });
-  
+
   container.querySelector('[data-action="showMenu"]')?.addEventListener('click', () => {
     if (typeof window.showTab === 'function') window.showTab('menu');
   });
-  
-  container.querySelector('[data-action="retry"]')?.addEventListener('click', loadOrders);
+
+  container.querySelector('[data-action="retry"]')?.addEventListener('click', () => {
+    loadOrders();
+  });
 }
 
-//STARTUP
+// STARTUP
 export async function loadOrders() {
   console.log('📋 Loading user orders...');
-  
+
   const ordersGrid = document.getElementById('orders-grid');
   if (!ordersGrid) {
     console.warn('⚠️ Orders grid not found');
     return;
   }
-  
-  // Check if user is logged in
+
   if (!window.currentUser?.id) {
-    ordersGrid.innerHTML = `
-      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: #fff3cd; border-radius: 12px; border-left: 4px solid #ffc107;">
-        <h3 style="color: #856404; margin: 0 0 1rem;">🔒 Login Required</h3>
-        <p style="color: #856404; margin: 0 0 1.5rem;">Please login to view your order history</p>
-        <button data-action="showAuth" style="background: #007bff; color: white; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: 600;">
-          🔑 Login / Register
-        </button>
-      </div>
-    `;
+    ordersGrid.innerHTML = renderStateCard({
+      icon: '🔒',
+      title: 'Login required',
+      message: 'Please login to view your order history.',
+      action: 'showAuth',
+      actionLabel: 'Login / Register',
+      tone: 'warning'
+    });
     attachEventListeners(ordersGrid);
     return;
   }
 
-  // Show loading
   ordersGrid.innerHTML = `
     <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: #666;">
       <div style="font-size: 3rem; margin-bottom: 1rem;">🍕</div>
@@ -199,59 +399,72 @@ export async function loadOrders() {
   `;
 
   try {
-    // Try API first, fallback to localStorage
-    const apiOrders = await fetchUserOrders().catch(() => []);
-    let orders = apiOrders.length > 0 ? apiOrders : getUserOrders(window.currentUser.id);
-    
-    console.log(`✅ Loaded ${orders.length} orders for user ${window.currentUser.email}`);
-    
+    const apiOrders = await fetchUserOrders().catch((error) => {
+      console.warn('API fetch failed, using local fallback:', error);
+      return [];
+    });
+
+    const fallbackOrders = getUserOrders(window.currentUser.id);
+    const orders = apiOrders.length > 0 ? apiOrders : fallbackOrders;
+
+    console.log(`✅ Loaded ${orders.length} orders for user ${window.currentUser.email || window.currentUser.id}`);
+
     if (orders.length === 0) {
-      ordersGrid.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; background: white; border-radius: 12px; border: 2px dashed #ddd;">
-          <div style="font-size: 4rem; margin-bottom: 1rem;">🍕</div>
-          <h3 style="color: #666; margin: 0 0 0.5rem;">No orders yet!</h3>
-          <p style="color: #999; margin: 0 0 1.5rem;">Start by ordering some delicious pizza</p>
-          <button data-action="showMenu" style="background: #ff6b35; color: white; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: 600;">
-            🍕 Browse Menu
-          </button>
-        </div>
-      `;
+      ordersGrid.innerHTML = renderStateCard({
+        icon: '🍕',
+        title: 'No orders yet',
+        message: 'Start by ordering something delicious.',
+        action: 'showMenu',
+        actionLabel: 'Browse Menu'
+      });
     } else {
-      orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      renderOrders(orders);
+      const sortedOrders = [...orders].sort((a, b) => {
+        const aTime = toValidDate(a.createdAt)?.getTime() || 0;
+        const bTime = toValidDate(b.createdAt)?.getTime() || 0;
+        return bTime - aTime;
+      });
+
+      renderOrders(sortedOrders);
     }
-    
+
     attachEventListeners(ordersGrid);
   } catch (error) {
     console.error('❌ Failed to load orders:', error);
-    ordersGrid.innerHTML = `
-      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: #f8d7da; border-radius: 12px; border-left: 4px solid #dc3545;">
-        <h3 style="color: #721c24; margin: 0 0 0.5rem;">⚠️ Error Loading Orders</h3>
-        <p style="color: #721c24; margin: 0 0 1rem;">${error.message}</p>
-        <button data-action="retry" style="background: #007bff; color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 6px; cursor: pointer;">
-          🔄 Retry
-        </button>
-      </div>
-    `;
+
+    ordersGrid.innerHTML = renderStateCard({
+      icon: '⚠️',
+      title: 'Error loading orders',
+      message: error.message || 'Something went wrong while loading your orders.',
+      action: 'retry',
+      actionLabel: 'Retry',
+      tone: 'danger'
+    });
+
     attachEventListeners(ordersGrid);
   }
 }
+
+let ordersTabInitialized = false;
+
 export function initOrdersTab() {
   console.log('📋 Initializing Orders Tab...');
-  
+
+  if (!ordersTabInitialized) {
+    ordersTabInitialized = true;
+
+    window.addEventListener('authChanged', () => {
+      console.log('🔄 Auth changed, refreshing orders...');
+      loadOrders();
+    });
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadOrders);
+    document.addEventListener('DOMContentLoaded', loadOrders, { once: true });
   } else {
     setTimeout(loadOrders, 100);
   }
-  
-  window.addEventListener('authChanged', () => {
-    console.log('🔄 Auth changed, refreshing orders...');
-    loadOrders();
-  });
-  
+
   console.log('✅ Orders Tab initialized');
 }
 
-// Export for global access
 window.ordersTab = { loadOrders, initOrdersTab };

@@ -512,12 +512,12 @@ export function initCheckout() {
         total: parseFloat(order.total ?? order.totalPrice ?? 0)
       };
 
-      console.log('✅ Order created successfully:', normalizedOrder);
+      console.log('✅ Order created successfully:', createdOrder);
 
       clearCart();
 
       if (typeof window.showOrderConfirmation === 'function') {
-        window.showOrderConfirmation(normalizedOrder);
+        window.showOrderConfirmation(createdOrder);
       } else {
         throw new Error('Order confirmation view is not available');
       }
