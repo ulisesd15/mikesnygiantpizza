@@ -1,9 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const OrderItem = sequelize.define('OrderItem', {
-    id: { 
-      type: DataTypes.INTEGER, 
-      primaryKey: true, 
-      autoIncrement: true 
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
     },
     orderId: {
       type: DataTypes.INTEGER,
@@ -34,17 +34,37 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.TEXT,
       allowNull: true
     },
-
-    // New customization fields
     addedToppings: {
-      type: DataTypes.JSON,
+      type: DataTypes.TEXT,
       allowNull: true,
-      defaultValue: []
+      defaultValue: '[]',
+      get() {
+        const rawValue = this.getDataValue('addedToppings');
+        try {
+          return rawValue ? JSON.parse(rawValue) : [];
+        } catch (error) {
+          return [];
+        }
+      },
+      set(value) {
+        this.setDataValue('addedToppings', JSON.stringify(value || []));
+      }
     },
     removedToppings: {
-      type: DataTypes.JSON,
+      type: DataTypes.TEXT,
       allowNull: true,
-      defaultValue: []
+      defaultValue: '[]',
+      get() {
+        const rawValue = this.getDataValue('removedToppings');
+        try {
+          return rawValue ? JSON.parse(rawValue) : [];
+        } catch (error) {
+          return [];
+        }
+      },
+      set(value) {
+        this.setDataValue('removedToppings', JSON.stringify(value || []));
+      }
     }
   }, {
     tableName: 'orderItems',
