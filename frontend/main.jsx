@@ -3,7 +3,7 @@ import { renderCartDrawer, initCartDrawer } from './src/components/cart/cartDraw
 import { initGlobalFunctions } from './src/components/cart/cartStore.js';
 import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './src/components/menuRenderer.jsx';
 import { renderAdminTab, initAdminPanel, loadAdminMenu } from './src/components/admin/adminPanel.jsx';
-import { renderOrdersTab, initOrdersTab } from './src/components/ordersTab.jsx';
+import { renderOrdersTab, initOrdersTab } from './src/components/orders/ordersTab.jsx';
 import { renderCheckoutPage, initCheckout } from './src/components/checkout/CheckoutPage.jsx';
 import { renderOrderConfirmation, initOrderConfirmation } from './src/components/orders/OrderConfirmation.jsx';
 
