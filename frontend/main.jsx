@@ -93,7 +93,7 @@ window.showOrderConfirmation = (order) => {
 
 function mainUI() {
   return `
-    <div style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
+    <div style="padding: clamp(1rem, 2vw, 2rem); max-width: 1400px; margin: 0 auto; position: relative;">
       <header style="text-align: center; margin-bottom: 3rem;">
         <h1 style="color: #ff6b35; font-size: 3rem; margin: 0; cursor: pointer;" onclick="showTab('menu')">🍕 Mike's NY Giant Pizza</h1>
         <p style="color: #666; margin: 0.5rem 0 0; font-size: 1.1rem;">Authentic New York Style Pizza</p>
@@ -513,9 +513,9 @@ async function loadApp() {
   console.log('✅ HTML rendered');
 
   loadGoogleSignIn();
-  initMenuGlobalFunctions();
-  initCartDrawer();
   initGlobalFunctions();
+  initCartDrawer();
+  initMenuGlobalFunctions();
 
   await loadMenu();
 

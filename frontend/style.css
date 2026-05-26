@@ -3,3 +3,15 @@
   border-radius: 8px; background: white; font-size: 1rem;
 }
 
+.customization-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+.customization-actions > button {
+  flex: 1;
+}
+@media (max-width: 480px) {
+  .customization-actions {
+    flex-direction: column;
+  }
+}

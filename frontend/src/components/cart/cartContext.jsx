@@ -1,24 +1,33 @@
-// frontend/src/cart/CartContext.jsx
-import React, { createContext, useContext, useEffect, useCallback } from 'react';
-import * as CartStore from './cartStore.js'
+import React, { createContext, useContext, useEffect, useMemo, useSyncExternalStore } from 'react';
+import * as CartStore from './cartStore.js';
 
-const CartContext = createContext();
+const CartContext = createContext(null);
 
-export function CartProvider({ children }) {
-  // Expose store functions as context values
-  const value = {
+function getSnapshot() {
+  return {
     cart: CartStore.getCart(),
     cartCount: CartStore.getCartCount(),
     cartTotal: CartStore.getCartTotal(),
+  };
+}
+
+export function CartProvider({ children }) {
+  const snapshot = useSyncExternalStore(
+    CartStore.subscribe,
+    getSnapshot,
+    getSnapshot
+  );
+
+  const value = useMemo(() => ({
+    ...snapshot,
     addToCart: CartStore.addToCart,
     updateCartQuantity: CartStore.updateCartQuantity,
     removeFromCart: CartStore.removeFromCart,
     clearCart: CartStore.clearCart,
     setMenuItems: CartStore.setMenuItems,
-    renderCart: CartStore.renderCart,  // TEMP until drawer is React
-  };
+    renderCart: CartStore.renderCart,
+  }), [snapshot]);
 
-  // Global window exports (for non-React parts)
   useEffect(() => {
     window.addToCart = CartStore.addToCart;
     window.updateCartQuantity = CartStore.updateCartQuantity;
@@ -27,7 +36,7 @@ export function CartProvider({ children }) {
     window.getCart = CartStore.getCart;
     window.getCartTotal = CartStore.getCartTotal;
     window.clearCart = CartStore.clearCart;
-    CartStore.updateCartCount();  // Initial count
+    CartStore.updateCartCount();
   }, []);
 
   return (

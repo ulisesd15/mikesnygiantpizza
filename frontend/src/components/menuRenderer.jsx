@@ -1,22 +1,28 @@
 // frontend/components/menuRenderer.js
 import { API_ROUTES, apiUrl } from '../../config';
 
-// Static (90% use case)
-fetch(API_ROUTES.profile)  // → http://localhost:5001/api/auth/profile
-
-// Dynamic (10% use case)  
-fetch(apiUrl(API_ROUTES.menuItem, { id: 123 }))  // → /api/menu/123
-
 // Local state
 let menuItems = [];
 let currentCategory = 'all';
+
+function toItemId(value) {
+  const id = Number(value);
+  return Number.isInteger(id) ? id : null;
+}
+
+function getCustomizationUrl(itemId) {
+  const id = toItemId(itemId);
+  if (id === null) {
+    throw new Error(`Invalid menu item id: ${String(itemId)}`);
+  }
+  return apiUrl(`/menu/${id}/customization`);
+}
 
 // View shell
 export function renderMenuTab() {
   return `
     <div style="max-width: 1400px; margin: 0 auto;">
       <div id="category-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 2rem; overflow-x: auto; padding-bottom: 0.5rem; flex-wrap: wrap; justify-content: center;">
-        <button onclick="window.filterCategory('all')" class="category-tab active" data-category="all">🍽️ All Items</button>
         <button onclick="window.filterCategory('pizza')" class="category-tab" data-category="pizza">🍕 Pizzas</button>
         <button onclick="window.filterCategory('wings')" class="category-tab" data-category="wings">🍗 Wings</button>
         <button onclick="window.filterCategory('salad')" class="category-tab" data-category="salad">🥗 Salads</button>
@@ -28,6 +34,7 @@ export function renderMenuTab() {
         <button onclick="window.filterCategory('drink')" class="category-tab" data-category="drink">🥤 Drinks</button>
         <button onclick="window.filterCategory('dessert')" class="category-tab" data-category="dessert">🍰 Desserts</button>
         <button onclick="window.filterCategory('side')" class="category-tab" data-category="side">🧂 Sides</button>
+        <button onclick="window.filterCategory('all')" class="category-tab active" data-category="all">🍽️ All Items</button>
       </div>
 
       <div id="menu-grid" style="padding: 1rem 0;">
@@ -79,12 +86,12 @@ export function renderMenuTab() {
       }
       .menu-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
         gap: 1.5rem;
       }
       .compact-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
         gap: 1rem;
       }
       .menu-card {
@@ -375,7 +382,7 @@ function singleItemCard(item, extraClass = '') {
         ${item.size ? `<span style="font-size: 0.85rem; color: #666; font-weight: 500;">${item.size}</span>` : ''}
       </div>
       ${item.description ? `<p style="color: #666; margin: 0 0 0.75rem; font-size: 0.875rem; line-height: 1.4;">${item.description}</p>` : ''}
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; margin-top: auto; flex-wrap: wrap;">
         <p style="font-size: 1.5rem; color: #28a745; font-weight: bold; margin: 0;">$${parseFloat(item.price || 0).toFixed(2)}</p>
         <button
           onclick="window.addToCart(${item.id})"
@@ -394,20 +401,27 @@ window.customizePizzaAndAdd = async (btn) => {
   const sizeSelect = document.querySelector(`.size-selector[data-group-id="${groupId}"]`);
   if (!sizeSelect) return;
 
-  const selectedId = parseInt(sizeSelect.value, 10);
-  if (!Number.isInteger(selectedId)) return;
+  const selectedId = toItemId(sizeSelect.value);
+  if (selectedId === null) return;
 
   try {
-    const res = await fetch(apiUrl(`/menu/${selectedId}/customization`));
+    const res = await fetch(getCustomizationUrl(selectedId));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const payload = await res.json();
     const data = payload?.data || payload;
 
-    console.log('Customization data:', data);
+    const itemInfo = menuItems.find((i) => i.id === selectedId) || {
+      id: selectedId,
+      menuItemId: selectedId,
+      name: 'Pizza',
+      size: '',
+      price: 0,
+      basePrice: 0
+    };
 
-    if (typeof window.showPizzaCustom === 'function') {
-      window.showPizzaCustom(data);
+    if (typeof window.showItemCustomizationModal === 'function') {
+      window.showItemCustomizationModal(data, itemInfo);
       return;
     }
 
@@ -416,11 +430,9 @@ window.customizePizzaAndAdd = async (btn) => {
     }
   } catch (err) {
     console.error('Failed to load customization data:', err);
-
     if (window.showToast) {
       window.showToast('Pizza customization is unavailable right now');
     }
-
     if (window.addToCart) {
       window.addToCart(selectedId);
     }
@@ -494,18 +506,18 @@ export function initMenuGlobalFunctions() {
     const rawItemId = btn?.dataset?.itemId;
     const rawGroupId = btn?.dataset?.groupId;
 
-    const itemId = parseInt(rawItemId || rawGroupId, 10);
-    if (!Number.isInteger(itemId)) return;
+    const itemId = toItemId(rawItemId || rawGroupId);
+    if (itemId === null) return;
 
     const sizeSelect =
       document.querySelector(`.size-selector[data-item-id="${itemId}"]`) ||
       document.querySelector(`.size-selector[data-group-id="${itemId}"]`);
 
-    const selectedId = sizeSelect ? parseInt(sizeSelect.value, 10) : itemId;
-    if (!Number.isInteger(selectedId)) return;
+    const selectedId = sizeSelect ? toItemId(sizeSelect.value) : itemId;
+    if (selectedId === null) return;
 
     try {
-      const res = await fetch(apiUrl(`/menu/${selectedId}/customization`));
+      const res = await fetch(getCustomizationUrl(selectedId));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const payload = await res.json();
@@ -532,11 +544,6 @@ export function initMenuGlobalFunctions() {
           detail: data
         })
       );
-      return;
-
-      if (window.addToCart) {
-        window.addToCart(selectedId);
-      }
     } catch (err) {
       console.error('Failed to load customization data:', err);
 
@@ -549,64 +556,87 @@ export function initMenuGlobalFunctions() {
       }
     }
   };
-
   // Modal renderer hook
   window.showItemCustomizationModal = (customData, itemInfo) => {
-    const existing = document.getElementById('item-customization-modal');
-    if (existing) existing.remove();
+  const existing = document.getElementById('item-customization-modal');
+  if (existing) existing.remove();
 
-    const basePrice = parseFloat(itemInfo.basePrice ?? itemInfo.price ?? 0);
+  const basePrice = parseFloat(itemInfo?.basePrice ?? itemInfo?.price ?? 0);
 
-    const mandatory = Array.isArray(customData?.mandatory) ? customData.mandatory : [];
-    const optional = Array.isArray(customData?.optional) ? customData.optional : [];
-    const itemPrices = customData?.itemPrices || {};
+  const mandatory = Array.isArray(customData?.mandatory) ? customData.mandatory : [];
+  const optional = Array.isArray(customData?.optional) ? customData.optional : [];
+  const itemPrices = customData?.itemPrices || {};
 
-    const modal = document.createElement('div');
-    modal.id = 'item-customization-modal';
-    modal.dataset.basePrice = String(basePrice);
-    modal.dataset.menuItemId = String(itemInfo.id);
+  const modal = document.createElement('div');
+  modal.id = 'item-customization-modal';
+  modal.dataset.basePrice = String(basePrice);
+  modal.dataset.menuItemId = String(itemInfo?.id ?? '');
 
-    modal.innerHTML = `
+  modal.innerHTML = `
+    <div style="
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    ">
       <div style="
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.55);
-        z-index: 10000;
+        width: 100%;
+        max-width: 560px;
+        max-height: min(90dvh, 90vh);
         display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
+        flex-direction: column;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        overflow: hidden;
       ">
         <div style="
-          width: 100%;
-          max-width: 560px;
-          max-height: 90vh;
-          overflow-y: auto;
-          background: white;
-          border-radius: 16px;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+          padding: 1.25rem 1.25rem 1rem;
+          border-bottom: 1px solid #eee;
+          display: flex;
+          justify-content: space-between;
+          align-items: start;
+          gap: 1rem;
+          flex-shrink: 0;
         ">
-          <div style="padding: 1.25rem 1.25rem 1rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: start; gap: 1rem;">
-            <div>
-              <h2 style="margin: 0; color: #ff6b35; font-size: 1.35rem;">Customize ${itemInfo.name}</h2>
-              ${itemInfo.size ? `<p style="margin: 0.35rem 0 0; color: #666;">Size: ${itemInfo.size}</p>` : ''}
-            </div>
-            <button onclick="window.closeItemCustomizationModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;">×</button>
+          <div>
+            <h2 style="margin: 0; color: #ff6b35; font-size: 1.35rem;">
+              Customize ${itemInfo?.name || 'Item'}
+            </h2>
+            ${itemInfo?.size ? `<p style="margin: 0.35rem 0 0; color: #666;">Size: ${itemInfo.size}</p>` : ''}
           </div>
+          <button
+            onclick="window.closeItemCustomizationModal()"
+            aria-label="Close customization modal"
+            style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;"
+          >
+            ×
+          </button>
+        </div>
 
-          <div style="padding: 1.25rem;">
-            ${
-              mandatory.length
-                ? `
-              <div style="margin-bottom: 1.5rem;">
-                <h3 style="margin: 0 0 0.75rem; font-size: 1rem; color: #333;">Original ingredients</h3>
-                <p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: #777;">Included by default. Uncheck to remove.</p>
-                <div style="display: grid; gap: 0.5rem;">
-                  ${mandatory
-                    .map((ingredient) => {
+        <div style="padding: 1.25rem; overflow-y: auto; flex: 1; min-height: 0;">
+          ${
+            mandatory.length
+              ? `
+                <div style="margin-bottom: 1.5rem;">
+                  <h3 style="margin: 0 0 0.75rem; font-size: 1rem; color: #333;">Original ingredients</h3>
+                  <p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: #777;">Included by default. Uncheck to remove.</p>
+                  <div style="display: grid; gap: 0.5rem;">
+                    ${mandatory.map((ingredient) => {
                       const price = parseFloat(itemPrices[ingredient.id] || ingredient.price || 0);
                       return `
-                        <label class="custom-ingredient-row" data-role="mandatory" data-id="${ingredient.id}" data-name="${ingredient.name}" data-price="${price}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 0.9rem; border: 1px solid #e5e5e5; border-radius: 10px; cursor: pointer;">
+                        <label
+                          class="custom-ingredient-row"
+                          data-role="mandatory"
+                          data-id="${ingredient.id}"
+                          data-name="${ingredient.name}"
+                          data-price="${price}"
+                          style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 0.9rem; border: 1px solid #e5e5e5; border-radius: 10px; cursor: pointer;"
+                        >
                           <span style="font-weight: 500; color: #333;">${ingredient.name}</span>
                           <span style="display: flex; align-items: center; gap: 0.5rem;">
                             <small style="color: #888;">Remove</small>
@@ -614,26 +644,31 @@ export function initMenuGlobalFunctions() {
                           </span>
                         </label>
                       `;
-                    })
-                    .join('')}
+                    }).join('')}
+                  </div>
                 </div>
-              </div>
-            `
-                : ''
-            }
+              `
+              : ''
+          }
 
-            ${
-              optional.length
-                ? `
-              <div>
-                <h3 style="margin: 0 0 0.75rem; font-size: 1rem; color: #333;">Add extras</h3>
-                <p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: #777;">Select any extra ingredients you want.</p>
-                <div style="display: grid; gap: 0.5rem; max-height: 320px; overflow-y: auto;">
-                  ${optional
-                    .map((ingredient) => {
+          ${
+            optional.length
+              ? `
+                <div>
+                  <h3 style="margin: 0 0 0.75rem; font-size: 1rem; color: #333;">Add extras</h3>
+                  <p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: #777;">Select any extra ingredients you want.</p>
+                  <div style="display: grid; gap: 0.5rem; max-height: 320px; overflow-y: auto;">
+                    ${optional.map((ingredient) => {
                       const price = parseFloat(itemPrices[ingredient.id] || ingredient.price || 0);
                       return `
-                        <label class="custom-ingredient-row" data-role="optional" data-id="${ingredient.id}" data-name="${ingredient.name}" data-price="${price}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 0.9rem; border: 1px solid #e5e5e5; border-radius: 10px; cursor: pointer;">
+                        <label
+                          class="custom-ingredient-row"
+                          data-role="optional"
+                          data-id="${ingredient.id}"
+                          data-name="${ingredient.name}"
+                          data-price="${price}"
+                          style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 0.9rem; border: 1px solid #e5e5e5; border-radius: 10px; cursor: pointer;"
+                        >
                           <span style="font-weight: 500; color: #333;">${ingredient.name}</span>
                           <span style="display: flex; align-items: center; gap: 0.5rem;">
                             <small style="color: #28a745;">${price > 0 ? `+$${price.toFixed(2)}` : 'Included'}</small>
@@ -641,38 +676,48 @@ export function initMenuGlobalFunctions() {
                           </span>
                         </label>
                       `;
-                    })
-                    .join('')}
+                    }).join('')}
+                  </div>
                 </div>
-              </div>
-            `
-                : ''
-            }
+              `
+              : '<p style="margin: 0; color: #666;">No extra customizations available for this item.</p>'
+          }
+        </div>
+
+        <div style="
+          padding: 1rem 1.25rem 1.25rem;
+          border-top: 1px solid #eee;
+          background: #fafafa;
+          flex-shrink: 0;
+        ">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <span style="font-size: 0.95rem; color: #666;">Total</span>
+            <strong id="customization-total-price" style="font-size: 1.5rem; color: #28a745;">$${basePrice.toFixed(2)}</strong>
           </div>
 
-          <div style="padding: 1rem 1.25rem 1.25rem; border-top: 1px solid #eee; background: #fafafa;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <span style="font-size: 0.95rem; color: #666;">Total</span>
-              <strong id="customization-total-price" style="font-size: 1.5rem; color: #28a745;">$${basePrice.toFixed(2)}</strong>
-            </div>
-
-            <div style="display: flex; gap: 0.75rem;">
-              <button onclick="window.closeItemCustomizationModal()" style="flex: 1; background: #6c757d; color: white; border: none; padding: 0.9rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                Cancel
-              </button>
-              <button onclick="window.confirmCustomizedItem()" style="flex: 1; background: #ff6b35; color: white; border: none; padding: 0.9rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                Add to Cart
-              </button>
-            </div>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button
+              onclick="window.closeItemCustomizationModal()"
+              style="flex: 1 1 220px; background: #6c757d; color: white; border: none; padding: 0.9rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer;"
+            >
+              Cancel
+            </button>
+            <button
+              onclick="window.confirmCustomizedItem()"
+              style="flex: 1 1 220px; background: #ff6b35; color: white; border: none; padding: 0.9rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer;"
+            >
+              Add to Cart
+            </button>
           </div>
         </div>
       </div>
-    `;
+    </div>
+  `;
 
-    document.body.appendChild(modal);
-    window.__currentCustomizationItem = itemInfo;
-    window.updateCustomizationPrice();
-  };
+  document.body.appendChild(modal);
+  window.__currentCustomizationItem = itemInfo;
+  window.updateCustomizationPrice();
+};
 
   window.closeItemCustomizationModal = () => {
     const modal = document.getElementById('item-customization-modal');
@@ -730,14 +775,25 @@ export function initMenuGlobalFunctions() {
       };
     });
  
-    window.addToCart({
-      menuItemId: itemInfo.id,
+    const cartPayload = {
+      menuItemId: toItemId(itemInfo.id),
+      id: toItemId(itemInfo.id),
       name: itemInfo.name,
       size: itemInfo.size,
       basePrice: parseFloat(itemInfo.basePrice ?? itemInfo.price ?? 0),
+      price: parseFloat(itemInfo.basePrice ?? itemInfo.price ?? 0),
       addedToppings,
       removedToppings
-    });
+    };
+
+    try {
+      window.addToCart(cartPayload);
+    } catch (error) {
+      console.warn('Object addToCart failed, falling back to item id:', error);
+      if (cartPayload.menuItemId !== null) {
+        window.addToCart(cartPayload.menuItemId);
+      }
+}
 
     window.closeItemCustomizationModal();
   };
