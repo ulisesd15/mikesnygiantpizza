@@ -432,27 +432,28 @@ window.refreshDashboard = async () => {
 
 function variantRowTemplate(variant = {}) {
   return `
-    <div class="variant-row" style="display:grid; grid-template-columns: 1.1fr 1fr auto; gap:0.75rem; align-items:center; margin-bottom:0.75rem;">
+    <div class="variant-row size-row">
       <input
-        class="admin-panel-input variant-label"
+        class="admin-panel-input variant-label size-input"
         placeholder="Size / Portion"
         value="${escapeHtml(variant.label || '')}"
-        style="width:100%; padding:0.8rem; border:2px solid #e5e7eb; border-radius:10px; font-size:0.95rem;"
       >
+
       <input
-        class="admin-panel-input variant-price"
+        class="admin-panel-input variant-price size-input"
         type="number"
         step="0.01"
+        min="0"
         placeholder="Price"
         value="${escapeHtml(variant.price ?? '')}"
-        style="width:100%; padding:0.8rem; border:2px solid #e5e7eb; border-radius:10px; font-size:0.95rem;"
       >
+
       <button
         type="button"
-        class="remove-variant-btn admin-action-btn"
-        style="padding:0.8rem 0.9rem; background:#dc2626; color:white; border:none; border-radius:10px; font-weight:700; cursor:pointer;"
+        class="remove-variant-btn remove-size-btn"
+        aria-label="Remove size"
       >
-        ✕
+        ×
       </button>
     </div>
   `;

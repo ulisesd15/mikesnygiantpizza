@@ -1,6 +1,5 @@
 // main.jsx
 import { renderCartDrawer, initCartDrawer } from './src/components/cart/cartDrawer.jsx';
-import { initGlobalFunctions } from './src/components/cart/cartStore.js';
 import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './src/components/menuRenderer.jsx';
 import { renderAdminTab, initAdminPanel, loadAdminMenu } from './src/components/admin/adminPanel.jsx';
 import { renderOrdersTab, initOrdersTab } from './src/components/orders/ordersTab.jsx';
@@ -22,7 +21,9 @@ let currentOrder = null; // Store current order for confirmation page
 // 🔧 DEFINE showTab BEFORE loadApp()
 window.showTab = (tab) => {
   console.log('📑 Switching to tab:', tab);
-  
+
+  document.documentElement.dataset.activeTab = tab;
+
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
   const activeBtn = document.querySelector(`[onclick="showTab('${tab}')"]`);
   if (activeBtn) activeBtn.classList.add('active');
@@ -91,22 +92,53 @@ window.showOrderConfirmation = (order) => {
   showTab('confirmation');
 };
 
+function applySavedTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  document.documentElement.dataset.theme = savedTheme;
+
+  const themeBtn = document.querySelector('.theme-toggle');
+  if (themeBtn) {
+    themeBtn.textContent = savedTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+  }
+}
+
+window.toggleTheme = () => {
+  const currentTheme = document.documentElement.dataset.theme || 'light';
+  const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+  document.documentElement.dataset.theme = nextTheme;
+  localStorage.setItem('theme', nextTheme);
+
+  const themeBtn = document.querySelector('.theme-toggle');
+  if (themeBtn) {
+    themeBtn.textContent = nextTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+  }
+};
+
 function mainUI() {
   return `
-    <div style="padding: clamp(1rem, 2vw, 2rem); max-width: 1400px; margin: 0 auto; position: relative;">
-      <header style="text-align: center; margin-bottom: 3rem;">
-        <h1 style="color: #ff6b35; font-size: 3rem; margin: 0; cursor: pointer;" onclick="showTab('menu')">🍕 Mike's NY Giant Pizza</h1>
-        <p style="color: #666; margin: 0.5rem 0 0; font-size: 1.1rem;">Authentic New York Style Pizza</p>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="app-header-row">
+          <div class="brand-lockup" onclick="showTab('menu')">
+            <h1 class="brand-title">Mike's <span>NY Giant Pizza</span></h1>
+            <p class="brand-subtitle">Modern ordering. New York flavor. Italian roots.</p>
+          </div>
+
+          <button class="theme-toggle" onclick="window.toggleTheme()">
+            🌙 Dark Mode
+          </button>
+        </div>
       </header>
 
       <!-- Auth Status -->
-      <div id="auth-status" style="text-align: center; margin-bottom: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+      <div id="auth-status" class="auth-status">
         <span id="user-info">👋 Guest - <button onclick="showAuth()" style="background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Login/Register</button></span>
         <button id="logout-btn" onclick="logout()" style="display: none; background: #dc3545; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; margin-left: 1rem;">Logout</button>
       </div>
 
       <!-- Tabs -->
-      <div style="display: flex; gap: 1rem; margin-bottom: 2rem; justify-content: center; flex-wrap: wrap;" id="tabs">
+      <div class="app-tabs" id="tabs">
         <button onclick="showTab('menu')" class="tab-btn active">🍕 Menu</button>
         <button onclick="showTab('orders')" class="tab-btn">📋 My Orders</button>
         <button id="admin-tab-btn" onclick="showTab('admin')" class="tab-btn" style="display: none;">⚙️ Admin</button>
@@ -122,144 +154,69 @@ function mainUI() {
       <!-- Cart -->
       ${renderCartDrawer()}
 
-      <!-- Pizza Customization Modal -->
-      <div id="pizza-custom-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 1rem;">
-  <div style="background: white; width: min(500px, 100%); padding: 1.5rem; border-radius: 12px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.25);">
-          <button onclick="window.hidePizzaCustom()" style="position: absolute; top: 0.75rem; right: 0.75rem; background: none; border: none; font-size: 1.25rem; cursor: pointer;">×</button>
-          <div id="pizza-custom-content"></div>
-        </div>
-      </div>
-
 
       <!-- Auth Modal -->
-      <div id="auth-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; backdrop-filter: blur(2px);">
-        <div style="background: white; margin: 10% auto; padding: 2rem; border-radius: 12px; max-width: 400px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-          <button onclick="hideAuth()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.2s;">×</button>
-          
+      <div id="auth-modal" class="modal-backdrop" style="display: none;">
+        <div class="auth-modal-card">
+          <button onclick="hideAuth()" class="modal-close-btn" aria-label="Close login modal">
+            ×
+          </button>
+
           <div id="auth-form" style="text-align: center;">
-            <h3 style="color: #333; margin: 0 0 1.5rem; font-size: 1.5rem;">👋 Welcome Back</h3>
-            
-           <!-- Email & Password Login -->
-          <input id="auth-email" type="email" placeholder="Email" class="input-style" style="margin-bottom: 1rem;">
+            <h3 class="auth-modal-title">Welcome Back</h3>
 
-          <!-- Password Input with Toggle -->
-          <div style="position: relative; margin-bottom: 1rem;">
-            <input 
-              id="auth-password" 
-              type="password" 
-              placeholder="Password" 
-              class="input-style" 
-              style="padding-right: 3rem; margin-bottom: 0;"
+            <input
+              id="auth-email"
+              type="email"
+              placeholder="Email"
+              class="input-style"
             >
-            <button 
-              type="button"
-              id="toggle-password"
-              onclick="togglePasswordVisibility()"
-              style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1.25rem; color: #666; padding: 0.25rem; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 4px; transition: background 0.2s;"
-              aria-label="Toggle password visibility"
-            >
-              <span id="eye-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
-              </span>
-            </button>
-          </div>
 
-          <button onclick="handleAuthSubmit()" style="background: #28a745; color: white; border: none; padding: 0.875rem; border-radius: 8px; font-size: 1rem; cursor: pointer; width: 100%; font-weight: 500; margin-bottom: 0.75rem;">🚀 Login</button>
+            <div style="position: relative; margin-bottom: 1rem;">
+              <input
+                id="auth-password"
+                type="password"
+                placeholder="Password"
+                class="input-style"
+                style="padding-right: 3rem; margin-bottom: 0;"
+              >
 
-            <!-- Divider -->
-            <div style="text-align: center; margin: 1.5rem 0; position: relative;">
-              <div style="border-top: 1px solid #ddd;"></div>
-              <span style="background: white; padding: 0 0.5rem; color: #999; position: relative; top: -10px; font-size: 0.9rem;">or</span>
+              <button
+                type="button"
+                id="toggle-password"
+                onclick="togglePasswordVisibility()"
+                class="password-toggle-btn"
+                aria-label="Toggle password visibility"
+              >
+                <span id="eye-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </span>
+              </button>
             </div>
-            
-            <!-- Google Sign-In -->
+
+            <button onclick="handleAuthSubmit()" class="app-btn app-btn-primary" style="width: 100%; padding: 0.875rem; margin-bottom: 0.75rem;">
+              Login
+            </button>
+
+            <div class="auth-divider">
+              <div></div>
+              <span>or</span>
+            </div>
+
             <div id="google-signin" style="margin-bottom: 1rem;"></div>
-            
-            <p style="margin-top: 1.5rem; color: #666; font-size: 0.9rem;">
-              Need help? <a href="#" onclick="showForgotPassword(); return false;" style="color: #007bff; text-decoration: none;">Forgot password?</a>
+
+            <p style="margin-top: 1.5rem; color: var(--color-muted); font-size: 0.9rem;">
+              Need help?
+              <a href="#" onclick="showForgotPassword(); return false;" style="color: var(--color-primary); text-decoration: none; font-weight: 700;">
+                Forgot password?
+              </a>
             </p>
           </div>
         </div>
       </div>
-
-      <!-- STYLES -->
-      <style>
-        .tab-btn { 
-          padding: 1rem 2rem; 
-          background: #f8f9fa; 
-          border: none; 
-          border-radius: 8px; 
-          cursor: pointer; 
-          font-size: 1rem; 
-          transition: all 0.3s; 
-          font-weight: 500;
-        }
-        .tab-btn.active, .tab-btn:hover { 
-          background: #ff6b35; 
-          color: white; 
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
-        }
-        .tab-content { 
-          animation: fadeIn 0.3s; 
-        }
-        @keyframes fadeIn { 
-          from { opacity: 0; transform: translateY(10px); } 
-          to { opacity: 1; transform: translateY(0); } 
-        }
-        .input-style { 
-          width: 100%; 
-          padding: 0.75rem; 
-          margin-bottom: 1rem; 
-          border: 1px solid #ddd; 
-          border-radius: 6px; 
-          box-sizing: border-box; 
-          font-size: 1rem; 
-        }
-        .input-style:focus { 
-          outline: none; 
-          border-color: #ff6b35; 
-          box-shadow: 0 0 0 3px rgba(255,107,53,0.1); 
-        }
-        .menu-card { 
-          border: 1px solid #ddd; 
-          border-radius: 12px; 
-          padding: 1.5rem; 
-          background: white; 
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-          transition: transform 0.2s; 
-        }
-        .menu-card:hover { 
-          transform: translateY(-4px); 
-        }
-        .size-selector { 
-          width: 100%; 
-          padding: 0.75rem; 
-          border: 2px solid #ff6b35; 
-          border-radius: 8px; 
-          background: white; 
-          font-size: 1rem; 
-          font-weight: 500; 
-        }
-        .add-to-cart-btn { 
-          transition: background 0.3s; 
-          width: 100%; 
-          background: #ff6b35; 
-          color: white; 
-          border: none; 
-          padding: 1rem; 
-          border-radius: 8px; 
-          font-size: 1.1rem; 
-          cursor: pointer; 
-        }
-        .add-to-cart-btn:hover { 
-          background: #e55a2b !important; 
-          transform: translateY(-2px); 
-        }
-      </style>
     </div>
   `;
 }
@@ -281,182 +238,6 @@ window.togglePasswordVisibility = () => {
     toggleBtn.style.background = 'none';
   }
 };
-
-let currentCustomization = null;
-
-window.showPizzaCustom = (data = {}) => {
-  const safeData = data ?? {};
-
-  const menuItem = safeData.menuItem ?? {};
-  const defaultToppings = Array.isArray(safeData.mandatory) ? safeData.mandatory : [];
-  const availableToppings = Array.isArray(safeData.optional) ? safeData.optional : [];
-  const itemPrices = safeData.itemPrices ?? {};
-  const basePrice = parseFloat(menuItem.basePrice ?? 0);
-
-  currentCustomization = {
-    menuItem,
-    defaultToppings,
-    availableToppings,
-    itemPrices
-  };
-
-  const modal = document.getElementById('pizza-custom-modal');
-  const content = document.getElementById('pizza-custom-content');
-  if (!modal || !content) return;
-
-  console.log('showPizzaCustom normalized:', currentCustomization);
-
-  content.innerHTML = `
-    <div style="display:flex; flex-direction:column; gap:1rem;">
-      <div>
-        <h3 style="margin: 0 0 0.35rem; color:#ff6b35;">
-          Customize ${menuItem.name || 'Pizza'} ${menuItem.size ? `(${menuItem.size})` : ''}
-        </h3>
-        <p style="margin:0; color:#666;">Base price: $${basePrice.toFixed(2)}</p>
-      </div>
-
-      <div style="padding:0.9rem; background:#f8f9fa; border-radius:10px;">
-        <h4 style="margin:0 0 0.75rem;">Remove toppings</h4>
-        ${
-          defaultToppings.length
-            ? defaultToppings.map(t => `
-              <label style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem; color:#333;">
-                <input
-                  type="checkbox"
-                  class="remove-topping"
-                  value="${t.id}"
-                  ${t.isRemovable ? '' : 'disabled'}
-                >
-                <span>${t.name} ${t.isRemovable ? '' : '<span style="color:#888;">(required)</span>'}</span>
-              </label>
-            `).join('')
-            : '<p style="margin:0; color:#777;">No removable default toppings.</p>'
-        }
-      </div>
-
-      <div style="padding:0.9rem; background:#f8f9fa; border-radius:10px;">
-        <h4 style="margin:0 0 0.75rem;">Add extra toppings</h4>
-        ${
-          availableToppings.length
-            ? availableToppings.map(t => {
-              const price = parseFloat(t.price ?? itemPrices[t.id] ?? 0);
-              return `
-                <label style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; margin-bottom:0.5rem; color:#333;">
-                  <span style="display:flex; align-items:center; gap:0.5rem;">
-                    <input
-                      type="checkbox"
-                      class="add-topping"
-                      value="${t.id}"
-                      data-price="${price}"
-                    >
-                    ${t.name}
-                  </span>
-                  <span style="color:#28a745; font-weight:600;">+$${price.toFixed(2)}</span>
-                </label>
-              `;
-            }).join('')
-            : '<p style="margin:0; color:#777;">No extra toppings available.</p>'
-        }
-      </div>
-
-      <div style="padding-top:0.75rem; border-top:1px solid #ddd;">
-        <p id="custom-price" style="font-weight:700; font-size:1.1rem; margin:0 0 0.75rem;">
-          Total: $${basePrice.toFixed(2)}
-        </p>
-        <button
-          onclick="window.confirmPizzaCustom()"
-          style="width:100%; background:#ff6b35; color:white; border:none; padding:0.85rem; border-radius:8px; cursor:pointer; font-size:1rem; font-weight:600;"
-        >
-          Add to Cart
-        </button>
-      </div>
-    </div>
-  `;
-
-  modal.style.display = 'flex';
-
-  const recalc = () => {
-    const currentBasePrice = parseFloat(currentCustomization?.menuItem?.basePrice ?? 0);
-    let total = currentBasePrice;
-
-    document
-      .querySelectorAll('#pizza-custom-content .add-topping:checked')
-      .forEach(cb => {
-        total += parseFloat(cb.dataset.price || '0');
-      });
-
-    const priceEl = document.getElementById('custom-price');
-    if (priceEl) {
-      priceEl.textContent = `Total: $${total.toFixed(2)}`;
-    }
-  };
-
-  document
-    .querySelectorAll('#pizza-custom-content .add-topping')
-    .forEach(cb => cb.addEventListener('change', recalc));
-};
-
-window.hidePizzaCustom = () => {
-  const modal = document.getElementById('pizza-custom-modal');
-  if (modal) modal.style.display = 'none';
-  currentCustomization = null;
-};
-
-window.confirmPizzaCustom = () => {
-  if (!currentCustomization || !window.addToCart) return;
-
-  const menuItem = currentCustomization.menuItem ?? {};
-  const defaultToppings = Array.isArray(currentCustomization.defaultToppings)
-    ? currentCustomization.defaultToppings
-    : [];
-  const availableToppings = Array.isArray(currentCustomization.availableToppings)
-    ? currentCustomization.availableToppings
-    : [];
-
-  const removed = Array.from(
-    document.querySelectorAll('#pizza-custom-content .remove-topping:checked')
-  ).map(cb => {
-    const id = parseInt(cb.value, 10);
-    const t = defaultToppings.find(x => x.id === id);
-    return t ? { id: t.id, name: t.name } : null;
-  }).filter(Boolean);
-
-  const added = Array.from(
-    document.querySelectorAll('#pizza-custom-content .add-topping:checked')
-  ).map(cb => {
-    const id = parseInt(cb.value, 10);
-    const price = parseFloat(cb.dataset.price || '0');
-    const t = availableToppings.find(x => x.id === id);
-    return t ? { id: t.id, name: t.name, price } : null;
-  }).filter(Boolean);
-
-  window.addToCart({
-    menuItemId: menuItem.id,
-    name: menuItem.name,
-    size: menuItem.size,
-    basePrice: parseFloat(menuItem.basePrice ?? 0),
-    addedToppings: added,
-    removedToppings: removed
-  });
-
-  window.hidePizzaCustom();
-};
-
-window.addEventListener('click', (event) => {
-  const modal = document.getElementById('pizza-custom-modal');
-  if (modal && event.target === modal) {
-    window.hidePizzaCustom();
-  }
-});
-
-window.addEventListener('keydown', (event) => {
-  const modal = document.getElementById('pizza-custom-modal');
-  if (event.key === 'Escape' && modal && modal.style.display === 'flex') {
-    window.hidePizzaCustom();
-  }
-});
-
-
 
 // 🔧 LOAD GOOGLE SIGN-IN
 function loadGoogleSignIn() {
@@ -510,10 +291,10 @@ async function loadApp() {
   }
 
   appEl.innerHTML = mainUI();
+  applySavedTheme();
   console.log('✅ HTML rendered');
 
   loadGoogleSignIn();
-  initGlobalFunctions();
   initCartDrawer();
   initMenuGlobalFunctions();
 
@@ -526,24 +307,6 @@ async function loadApp() {
     await updateAuthUI();
   } catch (error) {
     console.warn('⚠️ Auth check failed:', error.message);
-  }
-
-  updateCartDrawerWithCheckout();
-}
-
-
-// Add checkout button to cart drawer
-function updateCartDrawerWithCheckout() {
-  const checkoutContainer = document.getElementById('checkout-btn');
-  if (checkoutContainer) {
-    checkoutContainer.innerHTML = `
-      <button 
-        onclick="window.goToCheckout()" 
-        style="width: 100%; padding: 1rem; background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; margin-top: 1rem;"
-      >
-        🛒 Proceed to Checkout
-      </button>
-    `;
   }
 }
 

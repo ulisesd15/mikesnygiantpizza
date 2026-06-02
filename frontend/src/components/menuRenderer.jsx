@@ -1,5 +1,5 @@
 // frontend/components/menuRenderer.js
-import { API_ROUTES, apiUrl } from '../../config';
+import { apiUrl } from '../../config';
 
 // Local state
 let menuItems = [];
@@ -23,107 +23,26 @@ export function renderMenuTab() {
   return `
     <div style="max-width: 1400px; margin: 0 auto;">
       <div id="category-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 2rem; overflow-x: auto; padding-bottom: 0.5rem; flex-wrap: wrap; justify-content: center;">
-        <button onclick="window.filterCategory('pizza')" class="category-tab" data-category="pizza">🍕 Pizzas</button>
-        <button onclick="window.filterCategory('wings')" class="category-tab" data-category="wings">🍗 Wings</button>
-        <button onclick="window.filterCategory('salad')" class="category-tab" data-category="salad">🥗 Salads</button>
-        <button onclick="window.filterCategory('appetizer')" class="category-tab" data-category="appetizer">🧈 Appetizers</button>
-        <button onclick="window.filterCategory('pasta')" class="category-tab" data-category="pasta">🍝 Pasta</button>
-        <button onclick="window.filterCategory('sub')" class="category-tab" data-category="sub">🥖 Subs</button>
-        <button onclick="window.filterCategory('combo')" class="category-tab" data-category="combo">🍔 Combos</button>
-        <button onclick="window.filterCategory('calzone')" class="category-tab" data-category="calzone">🥙 Calzones</button>
-        <button onclick="window.filterCategory('drink')" class="category-tab" data-category="drink">🥤 Drinks</button>
-        <button onclick="window.filterCategory('dessert')" class="category-tab" data-category="dessert">🍰 Desserts</button>
-        <button onclick="window.filterCategory('side')" class="category-tab" data-category="side">🧂 Sides</button>
-        <button onclick="window.filterCategory('all')" class="category-tab active" data-category="all">🍽️ All Items</button>
+        <button onclick="window.filterCategory('pizza')" class="category-tab" data-category="pizza">Pizzas</button>
+        <button onclick="window.filterCategory('wings')" class="category-tab" data-category="wings">Wings</button>
+        <button onclick="window.filterCategory('salad')" class="category-tab" data-category="salad">Salads</button>
+        <button onclick="window.filterCategory('appetizer')" class="category-tab" data-category="appetizer">Appetizers</button>
+        <button onclick="window.filterCategory('pasta')" class="category-tab" data-category="pasta">Pasta</button>
+        <button onclick="window.filterCategory('sub')" class="category-tab" data-category="sub">Subs</button>
+        <button onclick="window.filterCategory('combo')" class="category-tab" data-category="combo">Combos</button>
+        <button onclick="window.filterCategory('calzone')" class="category-tab" data-category="calzone">Calzones</button>
+        <button onclick="window.filterCategory('drink')" class="category-tab" data-category="drink">Drinks</button>
+        <button onclick="window.filterCategory('dessert')" class="category-tab" data-category="dessert">Desserts</button>
+        <button onclick="window.filterCategory('side')" class="category-tab" data-category="side">Sides</button>
+        <button onclick="window.filterCategory('all')" class="category-tab active" data-category="all">All Items</button>
       </div>
 
       <div id="menu-grid" style="padding: 1rem 0;">
-        <div style="text-align: center; padding: 3rem; color: #666;">
+        <div style="text-align: center; padding: 3rem; color: var(--color-muted);">
           Loading menu...
         </div>
       </div>
     </div>
-
-    <style>
-      .category-tab {
-        padding: 0.75rem 1.5rem;
-        background: white;
-        border: 2px solid #ddd;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 0.95rem;
-        font-weight: 500;
-        transition: all 0.3s;
-        white-space: nowrap;
-      }
-      .category-tab:hover {
-        background: #f8f9fa;
-        border-color: #ff6b35;
-      }
-      .category-tab.active {
-        background: #ff6b35;
-        color: white;
-        border-color: #ff6b35;
-      }
-      .menu-section {
-        margin-bottom: 3rem;
-      }
-      .menu-section-title {
-        background: linear-gradient(135deg, #ff6b35, #ff8c61);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin-bottom: 1.5rem;
-        text-align: center;
-      }
-      .menu-section-title h2 {
-        margin: 0;
-        font-size: 1.8rem;
-      }
-      .menu-section-title p {
-        margin: 0.5rem 0 0;
-        opacity: 0.9;
-      }
-      .menu-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-        gap: 1.5rem;
-      }
-      .compact-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-        gap: 1rem;
-      }
-      .menu-card {
-        border: 1px solid #ddd;
-        border-radius: 12px;
-        padding: 1.5rem;
-        background: white;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: all 0.3s;
-      }
-      .menu-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-      }
-      .compact-card {
-        padding: 1rem;
-      }
-      .compact-card h3 {
-        font-size: 1rem !important;
-      }
-      .item-badge {
-        display: inline-block;
-        padding: 0.25rem 0.75rem;
-        background: #e3f2fd;
-        color: #1976d2;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        margin-bottom: 0.5rem;
-      }
-    </style>
   `;
 }
 
@@ -174,10 +93,14 @@ export async function loadMenu() {
 
     if (container) {
       container.innerHTML = `
-        <div style="text-align: center; padding: 3rem; color: #dc3545;">
+        <div style="text-align: center; padding: 3rem; color: var(--color-danger);">
           <h3>Failed to load menu</h3>
-          <p>${error.message}</p>
-          <button onclick="window.retryLoadMenu()" style="background: #007bff; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; margin-top: 1rem;">
+          <p style="color: var(--color-muted);">${error.message}</p>
+          <button
+            onclick="window.retryLoadMenu()"
+            class="app-btn app-btn-primary"
+            style="padding: 0.75rem 1.5rem; margin-top: 1rem;"
+          >
             Retry
           </button>
         </div>
@@ -250,9 +173,8 @@ export function renderMenu(items, containerId) {
   }
 
   container.innerHTML =
-    html || '<div style="text-align: center; padding: 3rem; color: #666;">No items in this category</div>';
+    html || '<div style="text-align: center; padding: 3rem; color: var(--color-muted);">No items in this category</div>';
 }
-
 // Section renderers
 function renderPizzaSection(pizzas) {
   if (!pizzas || pizzas.length === 0) return '';
@@ -287,7 +209,7 @@ function renderCategorySection(title, items, subtitle = '', compact = false) {
 
   return `
     <div class="menu-section">
-      <div class="menu-section-title" style="background: linear-gradient(135deg, #007bff, #0056b3);">
+      <div class="menu-section-title">
         <h2>${title}</h2>
         ${subtitle ? `<p>${subtitle}</p>` : ''}
       </div>
@@ -303,16 +225,32 @@ function renderCompactSection(title, items) {
 
   return `
     <div class="menu-section">
-      <div class="menu-section-title" style="background: linear-gradient(135deg, #6c757d, #495057);">
+      <div class="menu-section-title">
         <h2>${title}</h2>
       </div>
+
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
         ${items.map((item) => `
           <div class="menu-card compact-card" style="padding: 0.75rem; text-align: center;">
-            <h4 style="margin: 0 0 0.25rem; font-size: 0.9rem; color: #333;">${item.name}</h4>
-            ${item.size ? `<p style="margin: 0; font-size: 0.75rem; color: #999;">${item.size}</p>` : ''}
-            <p style="margin: 0.5rem 0; font-size: 1.1rem; color: #28a745; font-weight: bold;">$${parseFloat(item.price || 0).toFixed(2)}</p>
-            <button onclick="window.addToCart(${item.id})" style="width: 100%; background: #28a745; color: white; border: none; padding: 0.5rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer;">
+            <h4 style="margin: 0 0 0.25rem; font-size: 0.9rem; color: var(--color-text);">
+              ${item.name}
+            </h4>
+
+            ${item.size ? `
+              <p style="margin: 0; font-size: 0.75rem; color: var(--color-muted);">
+                ${item.size}
+              </p>
+            ` : ''}
+
+            <p class="menu-price" style="margin: 0.5rem 0; font-size: 1.1rem;">
+              $${parseFloat(item.price || 0).toFixed(2)}
+            </p>
+
+            <button
+              onclick="window.addToCart(${item.id})"
+              class="add-to-cart-btn"
+              style="width: 100%; padding: 0.5rem; font-size: 0.85rem;"
+            >
               Add
             </button>
           </div>
@@ -335,58 +273,77 @@ function pizzaGroupCard(sizes) {
   const groupId = sortedSizes[0]?.id;
 
   return `
-    <div class="menu-card">
-      <h3 style="color: #ff6b35; margin: 0 0 0.5rem; font-size: 1.3rem;">${baseName}</h3>
-      <p style="color: #666; margin: 0 0 1rem; font-size: 0.9rem; line-height: 1.4;">${description}</p>
-
-      <div style="margin: 1rem 0;">
-        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333; font-size: 0.9rem;">Select Size:</label>
-        <select
-          class="size-selector"
-          data-group-id="${groupId}"
-          onchange="window.updatePizzaPrice(this)"
-          style="width: 100%; padding: 0.75rem; border: 2px solid #ff6b35; border-radius: 8px; background: white; font-size: 1rem; font-weight: 500;"
-        >
-          ${sortedSizes.map((size) => `
-            <option value="${size.id}" data-price="${size.price}" ${size.id === defaultSize.id ? 'selected' : ''}>
-              ${size.size} - $${parseFloat(size.price || 0).toFixed(2)}
-            </option>
-          `).join('')}
-        </select>
-      </div>
-
-      <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; text-align: center;">
-        <p style="margin: 0; font-size: 0.85rem; color: #666;">Price:</p>
-        <p id="pizza-price-${groupId}" style="font-size: 2rem; color: #28a745; font-weight: bold; margin: 0.25rem 0 0;">
-          $${parseFloat(defaultSize?.price || 0).toFixed(2)}
-        </p>
-      </div>
-
-      <button
-        class="add-to-cart-btn"
-        data-group-id="${groupId}"
-        onclick="window.customizePizzaAndAdd(this)"
-        style="width: 100%; background: #ff6b35; color: white; border: none; padding: 1rem; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: background 0.3s;"
-      >
-        ➕ Customize & Add
-      </button>
+  <div class="menu-card">
+    <div class="menu-card-media">
+      Pizza Image
     </div>
-  `;
+
+    <h3 class="menu-card-title">${baseName}</h3>
+
+    ${
+      description
+        ? `<p class="menu-card-description">${description}</p>`
+        : ''
+    }
+
+    <div style="margin: 1rem 0;">
+      <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; color: var(--color-text); font-size: 0.9rem;">
+        Select Size
+      </label>
+
+      <select
+        class="size-selector"
+        data-group-id="${groupId}"
+        onchange="window.updatePizzaPrice(this)"
+      >
+        ${sortedSizes.map((size) => `
+          <option value="${size.id}" data-price="${size.price}" ${size.id === defaultSize.id ? 'selected' : ''}>
+            ${size.size} - $${parseFloat(size.price || 0).toFixed(2)}
+          </option>
+        `).join('')}
+      </select>
+    </div>
+
+    <div style="background: var(--color-surface-soft); padding: 1rem; border-radius: var(--radius-md); margin: 1rem 0;">
+      <p style="margin: 0; font-size: 0.85rem; color: var(--color-muted);">Price</p>
+      <p id="pizza-price-${groupId}" class="menu-price">
+        $${parseFloat(defaultSize?.price || 0).toFixed(2)}
+      </p>
+    </div>
+
+    <button
+      class="add-to-cart-btn"
+      data-group-id="${groupId}"
+      onclick="window.customizePizzaAndAdd(this)"
+      style="width: 100%; padding: 1rem; font-size: 1rem;"
+    >
+      Customize & Add
+    </button>
+  </div>
+`;
 }
 
 function singleItemCard(item, extraClass = '') {
   return `
     <div class="menu-card ${extraClass}">
-      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
-        <h3 style="color: #007bff; margin: 0; font-size: 1.1rem;">${item.name}</h3>
-        ${item.size ? `<span style="font-size: 0.85rem; color: #666; font-weight: 500;">${item.size}</span>` : ''}
+      <div class="menu-card-media">
+        Item Image
       </div>
-      ${item.description ? `<p style="color: #666; margin: 0 0 0.75rem; font-size: 0.875rem; line-height: 1.4;">${item.description}</p>` : ''}
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; margin-top: auto; flex-wrap: wrap;">
-        <p style="font-size: 1.5rem; color: #28a745; font-weight: bold; margin: 0;">$${parseFloat(item.price || 0).toFixed(2)}</p>
+
+      <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem; margin-bottom: 0.5rem;">
+        <h3 class="menu-card-title">${item.name}</h3>
+        ${item.size ? `<span style="font-size: 0.85rem; color: var(--color-muted); font-weight: 700;">${item.size}</span>` : ''}
+      </div>
+
+      ${item.description ? `<p class="menu-card-description">${item.description}</p>` : ''}
+
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; margin-top: auto; flex-wrap: wrap;">
+        <p class="menu-price">$${parseFloat(item.price || 0).toFixed(2)}</p>
+
         <button
+          class="add-to-cart-btn"
           onclick="window.addToCart(${item.id})"
-          style="background: #28a745; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.3s;"
+          style="padding: 0.75rem 1.25rem;"
         >
           Add to Cart
         </button>
@@ -576,12 +533,13 @@ export function initMenuGlobalFunctions() {
     <div style="
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.55);
+      background: rgba(0,0,0,0.62);
       z-index: 10000;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 1rem;
+      backdrop-filter: blur(3px);
     ">
       <div style="
         width: 100%;
@@ -589,30 +547,50 @@ export function initMenuGlobalFunctions() {
         max-height: min(90dvh, 90vh);
         display: flex;
         flex-direction: column;
-        background: white;
-        border-radius: 16px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        background: var(--color-surface);
+        color: var(--color-text);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-hover);
         overflow: hidden;
       ">
         <div style="
           padding: 1.25rem 1.25rem 1rem;
-          border-bottom: 1px solid #eee;
+          border-bottom: 1px solid var(--color-border);
           display: flex;
           justify-content: space-between;
           align-items: start;
           gap: 1rem;
           flex-shrink: 0;
+          position: relative;
         ">
           <div>
-            <h2 style="margin: 0; color: #ff6b35; font-size: 1.35rem;">
+            <h2 style="margin: 0; color: var(--color-primary); font-size: 1.35rem;">
               Customize ${itemInfo?.name || 'Item'}
             </h2>
-            ${itemInfo?.size ? `<p style="margin: 0.35rem 0 0; color: #666;">Size: ${itemInfo.size}</p>` : ''}
+            ${itemInfo?.size ? `
+              <p style="margin: 0.35rem 0 0; color: var(--color-muted);">
+                Size: ${itemInfo.size}
+              </p>
+            ` : ''}
           </div>
+
           <button
             onclick="window.closeItemCustomizationModal()"
             aria-label="Close customization modal"
-            style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;"
+            style="
+              background: var(--color-surface-soft);
+              border: 1px solid var(--color-border);
+              color: var(--color-text);
+              font-size: 1.35rem;
+              cursor: pointer;
+              width: 38px;
+              height: 38px;
+              border-radius: 10px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
           >
             ×
           </button>
@@ -623,11 +601,17 @@ export function initMenuGlobalFunctions() {
             mandatory.length
               ? `
                 <div style="margin-bottom: 1.5rem;">
-                  <h3 style="margin: 0 0 0.75rem; font-size: 1rem; color: #333;">Original ingredients</h3>
-                  <p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: #777;">Included by default. Uncheck to remove.</p>
+                  <h3 style="margin: 0 0 0.75rem; font-size: 1rem; color: var(--color-text);">
+                    Original ingredients
+                  </h3>
+                  <p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: var(--color-muted);">
+                    Included by default. Uncheck to remove.
+                  </p>
+
                   <div style="display: grid; gap: 0.5rem;">
                     ${mandatory.map((ingredient) => {
                       const price = parseFloat(itemPrices[ingredient.id] || ingredient.price || 0);
+
                       return `
                         <label
                           class="custom-ingredient-row"
@@ -635,11 +619,24 @@ export function initMenuGlobalFunctions() {
                           data-id="${ingredient.id}"
                           data-name="${ingredient.name}"
                           data-price="${price}"
-                          style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 0.9rem; border: 1px solid #e5e5e5; border-radius: 10px; cursor: pointer;"
+                          style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            gap: 0.75rem;
+                            padding: 0.8rem 0.9rem;
+                            border: 1px solid var(--color-border);
+                            background: var(--color-surface-soft);
+                            border-radius: 10px;
+                            cursor: pointer;
+                          "
                         >
-                          <span style="font-weight: 500; color: #333;">${ingredient.name}</span>
+                          <span style="font-weight: 600; color: var(--color-text);">
+                            ${ingredient.name}
+                          </span>
+
                           <span style="display: flex; align-items: center; gap: 0.5rem;">
-                            <small style="color: #888;">Remove</small>
+                            <small style="color: var(--color-muted);">Remove</small>
                             <input type="checkbox" checked onchange="window.updateCustomizationPrice()" />
                           </span>
                         </label>
@@ -655,11 +652,17 @@ export function initMenuGlobalFunctions() {
             optional.length
               ? `
                 <div>
-                  <h3 style="margin: 0 0 0.75rem; font-size: 1rem; color: #333;">Add extras</h3>
-                  <p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: #777;">Select any extra ingredients you want.</p>
+                  <h3 style="margin: 0 0 0.75rem; font-size: 1rem; color: var(--color-text);">
+                    Add extras
+                  </h3>
+                  <p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: var(--color-muted);">
+                    Select any extra ingredients you want.
+                  </p>
+
                   <div style="display: grid; gap: 0.5rem; max-height: 320px; overflow-y: auto;">
                     ${optional.map((ingredient) => {
                       const price = parseFloat(itemPrices[ingredient.id] || ingredient.price || 0);
+
                       return `
                         <label
                           class="custom-ingredient-row"
@@ -667,11 +670,26 @@ export function initMenuGlobalFunctions() {
                           data-id="${ingredient.id}"
                           data-name="${ingredient.name}"
                           data-price="${price}"
-                          style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 0.9rem; border: 1px solid #e5e5e5; border-radius: 10px; cursor: pointer;"
+                          style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            gap: 0.75rem;
+                            padding: 0.8rem 0.9rem;
+                            border: 1px solid var(--color-border);
+                            background: var(--color-surface-soft);
+                            border-radius: 10px;
+                            cursor: pointer;
+                          "
                         >
-                          <span style="font-weight: 500; color: #333;">${ingredient.name}</span>
+                          <span style="font-weight: 600; color: var(--color-text);">
+                            ${ingredient.name}
+                          </span>
+
                           <span style="display: flex; align-items: center; gap: 0.5rem;">
-                            <small style="color: #28a745;">${price > 0 ? `+$${price.toFixed(2)}` : 'Included'}</small>
+                            <small style="color: var(--color-success); font-weight: 700;">
+                              ${price > 0 ? `+$${price.toFixed(2)}` : 'Included'}
+                            </small>
                             <input type="checkbox" onchange="window.updateCustomizationPrice()" />
                           </span>
                         </label>
@@ -680,33 +698,54 @@ export function initMenuGlobalFunctions() {
                   </div>
                 </div>
               `
-              : '<p style="margin: 0; color: #666;">No extra customizations available for this item.</p>'
+              : `
+                <p style="margin: 0; color: var(--color-muted);">
+                  No extra customizations available for this item.
+                </p>
+              `
           }
         </div>
 
         <div style="
           padding: 1rem 1.25rem 1.25rem;
-          border-top: 1px solid #eee;
-          background: #fafafa;
+          border-top: 1px solid var(--color-border);
+          background: var(--color-surface-soft);
           flex-shrink: 0;
         ">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <span style="font-size: 0.95rem; color: #666;">Total</span>
-            <strong id="customization-total-price" style="font-size: 1.5rem; color: #28a745;">$${basePrice.toFixed(2)}</strong>
+          <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+          ">
+            <span style="font-size: 0.95rem; color: var(--color-muted);">
+              Total
+            </span>
+
+            <strong
+              id="customization-total-price"
+              style="font-size: 1.5rem; color: var(--color-success);"
+            >
+              $${basePrice.toFixed(2)}
+            </strong>
           </div>
 
-          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+          <div class="customization-actions">
             <button
+              type="button"
               onclick="window.closeItemCustomizationModal()"
-              style="flex: 1 1 220px; background: #6c757d; color: white; border: none; padding: 0.9rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer;"
+              class="app-btn app-btn-secondary customization-cancel-btn"
             >
               Cancel
             </button>
+
             <button
+              type="button"
               onclick="window.confirmCustomizedItem()"
-              style="flex: 1 1 220px; background: #ff6b35; color: white; border: none; padding: 0.9rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer;"
+              class="app-btn app-btn-primary customization-add-btn"
             >
-              Add to Cart
+              Add to Cart · <span id="customization-add-price">$${basePrice.toFixed(2)}</span>
             </button>
           </div>
         </div>
@@ -741,9 +780,16 @@ export function initMenuGlobalFunctions() {
     const extrasTotal = addedToppings.reduce((sum, price) => sum + price, 0);
     const total = basePrice + extrasTotal;
 
+    const formattedTotal = `$${total.toFixed(2)}`;
+
     const totalEl = document.getElementById('customization-total-price');
     if (totalEl) {
-      totalEl.textContent = `$${total.toFixed(2)}`;
+      totalEl.textContent = formattedTotal;
+    }
+
+    const addPriceEl = document.getElementById('customization-add-price');
+    if (addPriceEl) {
+      addPriceEl.textContent = formattedTotal;
     }
   };
 
@@ -809,3 +855,4 @@ export function getMenuItems() {
 export function getMenuItemById(id) {
   return menuItems.find((item) => item.id === id);
 }
+
