@@ -1,5 +1,4 @@
 // frontend/components/checkout/CheckoutPage.jsx
-import { getCart, getCartTotal, clearCart } from '../cart/cartStore.js';
 
 const TAX_RATE = 0.0825;
 const DELIVERY_FEE = 3.99;
@@ -512,12 +511,12 @@ export function initCheckout() {
         total: parseFloat(order.total ?? order.totalPrice ?? 0)
       };
 
-      console.log('✅ Order created successfully:', createdOrder);
+      console.log('✅ Order created successfully:', normalizedOrder);
 
       clearCart();
 
       if (typeof window.showOrderConfirmation === 'function') {
-        window.showOrderConfirmation(createdOrder);
+        window.showOrderConfirmation(normalizedOrder);
       } else {
         throw new Error('Order confirmation view is not available');
       }

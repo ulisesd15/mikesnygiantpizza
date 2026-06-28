@@ -1,3 +1,4 @@
+// backend/models/user.js
 const bcrypt = require('bcrypt');
 
 module.exports = (sequelize, DataTypes) => {

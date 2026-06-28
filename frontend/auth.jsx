@@ -1,45 +1,68 @@
-import { showToast } from './src/components/cart/cartStore.js';
-import { apiUrl } from './src/components/api.js';
+import { apiUrl } from './config.js';
+
+function showToast(message, type = 'info') {
+  if (window.showToast && window.showToast !== showToast) {
+    window.showToast(message, type);
+    return;
+  }
+
+  console[type === 'error' ? 'error' : 'log'](message);
+  alert(message);
+}
+
+async function safeJson(res) {
+  try {
+    return await res.json();
+  } catch {
+    return {};
+  }
+}
 
 export async function checkAuth() {
   const token = localStorage.getItem('token');
   const savedUser = localStorage.getItem('user');
 
-  if (token) {
+  if (!token) {
+    window.currentUser = null;
+    await updateAuthUI();
+    return null;
+  }
+
+  if (savedUser) {
     try {
-      if (savedUser) {
-        try {
-          window.currentUser = JSON.parse(savedUser);
-          updateAuthUI();
-          console.log('✅ Loaded user from localStorage:', window.currentUser);
-        } catch (e) {
-          console.error('Failed to parse saved user:', e);
-        }
-      }
-
-      const response = await fetch(apiUrl('/auth/profile'), {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        window.currentUser = data.user || data;
-        localStorage.setItem('user', JSON.stringify(window.currentUser));
-        updateAuthUI();
-        return window.currentUser;
-      } else {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.currentUser = null;
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
+      window.currentUser = JSON.parse(savedUser);
+      await updateAuthUI();
+    } catch {
+      localStorage.removeItem('user');
     }
   }
 
-  window.currentUser = null;
-  updateAuthUI();
-  return null;
+  try {
+    const res = await fetch(apiUrl('/auth/profile'), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await safeJson(res);
+
+    if (!res.ok) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.currentUser = null;
+      await updateAuthUI();
+      return null;
+    }
+
+    window.currentUser = data.user || data;
+    localStorage.setItem('user', JSON.stringify(window.currentUser));
+    await updateAuthUI();
+
+    return window.currentUser;
+  } catch (error) {
+    console.error('Auth check failed:', error);
+    return window.currentUser || null;
+  }
 }
 
 export async function updateAuthUI() {
@@ -47,42 +70,31 @@ export async function updateAuthUI() {
   const logoutBtn = document.getElementById('logout-btn');
   const adminBtn = document.getElementById('admin-tab-btn');
 
-  if (!status) {
-    console.warn('❌ user-info element not found');
-    return;
-  }
+  if (!status) return;
 
   if (window.currentUser) {
-    const displayName = window.currentUser.name || window.currentUser.email || 'User';
+    const displayName =
+      window.currentUser.name ||
+      window.currentUser.full_name ||
+      window.currentUser.email ||
+      'User';
+
     const role = window.currentUser.role || 'customer';
 
     status.innerHTML = `👋 ${displayName} (${role.toUpperCase()})`;
-    status.style.display = 'inline';
 
-    if (logoutBtn) {
-      logoutBtn.style.display = 'inline-block';
-    }
-
-    const isAdmin = role === 'admin';
-    if (adminBtn) {
-      adminBtn.style.display = isAdmin ? 'block' : 'none';
-      console.log(`⚙️ Admin button ${isAdmin ? 'SHOWN' : 'hidden'} for ${role}`);
-    }
-
-    console.log('✅ Auth UI updated for user:', displayName);
+    if (logoutBtn) logoutBtn.style.display = 'inline-block';
+    if (adminBtn) adminBtn.style.display = role === 'admin' ? 'block' : 'none';
   } else {
-    status.innerHTML =
-      '👋 Guest - <button onclick="showAuth()" style="background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Login/Register</button>';
+    status.innerHTML = `
+      👋 Guest -
+      <button onclick="showAuth()" style="background:#007bff;color:white;border:none;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;">
+        Login/Register
+      </button>
+    `;
 
-    if (logoutBtn) {
-      logoutBtn.style.display = 'none';
-    }
-
-    if (adminBtn) {
-      adminBtn.style.display = 'none';
-    }
-
-    console.log('✅ Auth UI set to guest mode');
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    if (adminBtn) adminBtn.style.display = 'none';
   }
 
   window.dispatchEvent(new CustomEvent('authChanged'));
@@ -91,33 +103,26 @@ export async function updateAuthUI() {
 export async function handleAuthSubmit(isRegister = false) {
   console.log('🔐 Auth submit triggered:', { isRegister });
 
+  const nameInput = document.getElementById('auth-name');
   const emailInput = document.getElementById('auth-email');
   const passwordInput = document.getElementById('auth-password');
 
   if (!emailInput || !passwordInput) {
-    console.error('❌ Input fields not found!');
     showToast('Form error - refresh page', 'error');
     return;
   }
 
-  const email = emailInput.value?.trim();
-  const password = passwordInput.value?.trim();
-
-  console.log('📝 Form data:', { email, password, isRegister });
+  const name = nameInput ? nameInput.value.trim() : '';
+  const email = emailInput.value.trim();
+  const password = passwordInput.value.trim();
 
   if (!email || !password) {
-    showToast('❌ Please fill all fields', 'error');
+    showToast('Please enter your email and password', 'error');
     return;
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    showToast('❌ Invalid email format', 'error');
-    return;
-  }
-
-  if (password.length < 6) {
-    showToast('❌ Password must be at least 6 characters', 'error');
+  if (isRegister && !name) {
+    showToast('Please enter your full name to create an account', 'error');
     return;
   }
 
@@ -126,71 +131,77 @@ export async function handleAuthSubmit(isRegister = false) {
       ? apiUrl('/auth/register')
       : apiUrl('/auth/login');
 
-    console.log('📡 Sending request to:', endpoint);
+    const payload = isRegister
+      ? { name, email, password }
+      : { email, password };
 
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify(payload),
     });
 
-    const data = await res.json();
-    console.log('📥 Response:', { status: res.status, data });
+    const data = await safeJson(res);
 
-    if (res.ok) {
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      window.currentUser = data.user;
-
-      console.log('✅ User authenticated:', window.currentUser);
-      console.log('✅ User saved to localStorage');
-
-      await updateAuthUI();
-      window.hideAuth();
-
-      emailInput.value = '';
-      passwordInput.value = '';
-
-      const message = isRegister
-        ? `Welcome ${data.user.name}! Account created.`
-        : `Welcome ${data.user.name}! 👋`;
-      showToast(message);
-    } else {
-      showToast(data.error || 'Authentication failed', 'error');
+    if (!res.ok) {
+      showToast(data.error || data.message || 'Authentication failed', 'error');
+      return;
     }
+
+    if (!data.token || !data.user) {
+      showToast('Invalid server response. Missing token or user.', 'error');
+      return;
+    }
+
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    window.currentUser = data.user;
+
+    await updateAuthUI();
+    window.hideAuth?.();
+
+    if (nameInput) nameInput.value = '';
+    emailInput.value = '';
+    passwordInput.value = '';
+
+    const displayName = data.user?.name || data.user?.email || 'User';
+    showToast(`Welcome ${displayName}! 👋`);
   } catch (error) {
-    console.error('❌ Auth error:', error);
-    showToast('Authentication failed', 'error');
+    console.error('Auth error:', error);
+    showToast('Authentication failed. Check your backend server.', 'error');
   }
 }
 
 export async function handleGoogleAuth(credential) {
-  console.log('🔐 Google auth triggered');
-
   try {
     const res = await fetch(apiUrl('/auth/google'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ googleToken: credential })
+      body: JSON.stringify({ googleToken: credential }),
     });
 
-    const data = await res.json();
+    const data = await safeJson(res);
 
-    if (res.ok) {
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      window.currentUser = data.user;
-      console.log('✅ Google user authenticated:', window.currentUser);
-
-      await updateAuthUI();
-      window.hideAuth();
-      showToast(`Welcome ${data.user.name}! 🎉`);
-    } else {
-      showToast(data.error || 'Google auth failed', 'error');
+    if (!res.ok) {
+      showToast(data.error || data.message || 'Google auth failed', 'error');
+      return null;
     }
+
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    window.currentUser = data.user;
+
+    await updateAuthUI();
+    window.hideAuth?.();
+
+    const displayName = data.user?.name || data.user?.email || 'User';
+    showToast(`Welcome ${displayName}! 🎉`);
+
+    return data.user;
   } catch (error) {
-    console.error('❌ Google auth error:', error);
+    console.error('Google auth error:', error);
     showToast('Google authentication failed', 'error');
+    return null;
   }
 }
 
@@ -205,22 +216,29 @@ export function logout() {
 
 window.handleAuthSubmit = handleAuthSubmit;
 window.handleGoogleAuth = handleGoogleAuth;
+window.logout = logout;
+
 window.showAuth = () => {
   const modal = document.getElementById('auth-modal');
   if (modal) modal.style.display = 'block';
-  console.log('🔓 Auth modal opened');
 };
+
 window.hideAuth = () => {
   const modal = document.getElementById('auth-modal');
   if (modal) modal.style.display = 'none';
+
+  const nameInput = document.getElementById('auth-name');
   const emailInput = document.getElementById('auth-email');
   const passwordInput = document.getElementById('auth-password');
+
+  if (nameInput) nameInput.value = '';
   if (emailInput) emailInput.value = '';
   if (passwordInput) passwordInput.value = '';
-  console.log('🔒 Auth modal closed');
 };
-window.logout = logout;
-window.showForgotPassword = () => showToast('Contact Mike for password reset! 📞', 'info');
+
+window.showForgotPassword = () => {
+  showToast('Contact Mike for password reset! 📞', 'info');
+};
 
 document.addEventListener('click', (e) => {
   const modal = document.getElementById('auth-modal');
@@ -232,6 +250,7 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     const modal = document.getElementById('auth-modal');
+
     if (modal && modal.style.display !== 'none') {
       handleAuthSubmit(false);
     }

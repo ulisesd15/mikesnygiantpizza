@@ -294,7 +294,7 @@ function getUserOrders(userId) {
 
     return userOrders.map(normalizeOrder);
   } catch (error) {
-    console.error('❌ Error parsing orders:', error);
+    console.error('❌ Error parsing local orders:', error);
     return [];
   }
 }
@@ -356,11 +356,15 @@ async function fetchUserOrders() {
 // INTERACTION WIRING
 function attachEventListeners(container) {
   container.querySelector('[data-action="showAuth"]')?.addEventListener('click', () => {
-    if (typeof window.showAuth === 'function') window.showAuth();
+    if (typeof window.showAuth === 'function') {
+      window.showAuth();
+    }
   });
 
   container.querySelector('[data-action="showMenu"]')?.addEventListener('click', () => {
-    if (typeof window.showTab === 'function') window.showTab('menu');
+    if (typeof window.showTab === 'function') {
+      window.showTab('menu');
+    }
   });
 
   container.querySelector('[data-action="retry"]')?.addEventListener('click', () => {
