@@ -1,3 +1,4 @@
+// backend/models/orderItem.js
 module.exports = (sequelize, DataTypes) => {
   const OrderItem = sequelize.define('OrderItem', {
     id: {

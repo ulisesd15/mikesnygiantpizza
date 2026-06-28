@@ -1,39 +1,36 @@
 // main.jsx
 import { renderCartDrawer, initCartDrawer } from './src/components/cart/cartDrawer.jsx';
 import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './src/components/menuRenderer.jsx';
-import { renderAdminTab, initAdminPanel, loadAdminMenu } from './src/components/admin/adminPanel.jsx';
+import { renderAdminTab, initAdminPanel } from './src/components/admin/adminPanel.jsx';
 import { renderOrdersTab, initOrdersTab } from './src/components/orders/ordersTab.jsx';
 import { renderCheckoutPage, initCheckout } from './src/components/checkout/CheckoutPage.jsx';
 import { renderOrderConfirmation, initOrderConfirmation } from './src/components/orders/OrderConfirmation.jsx';
 
-import { checkAuth, updateAuthUI } from './auth.jsx'; 
+import { checkAuth, updateAuthUI } from './auth.jsx';
 
+document.title = "Mike's NY Giant Pizza - Online Ordering";
 
+let currentOrder = null;
 
-
-
-document.title = 'Mike\'s NY Giant Pizza - Online Ordering';
-
-let currentOrder = null; // Store current order for confirmation page
-
-// Helper to toggle admin button visibility
-
-// 🔧 DEFINE showTab BEFORE loadApp()
+// Define showTab before loadApp()
 window.showTab = (tab) => {
   console.log('📑 Switching to tab:', tab);
 
   document.documentElement.dataset.activeTab = tab;
 
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.classList.remove('active');
+  });
+
   const activeBtn = document.querySelector(`[onclick="showTab('${tab}')"]`);
   if (activeBtn) activeBtn.classList.add('active');
-  
+
   // Hide all tabs
-  ['menu-tab', 'orders-tab', 'admin-tab', 'checkout-tab', 'confirmation-tab'].forEach(id => {
+  ['menu-tab', 'orders-tab', 'admin-tab', 'checkout-tab', 'confirmation-tab'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
-  
+
   if (tab === 'menu') {
     const menuTab = document.getElementById('menu-tab');
     if (menuTab) {
@@ -41,24 +38,23 @@ window.showTab = (tab) => {
       console.log('✅ Menu tab now visible');
     }
   }
-  
+
   if (tab === 'orders') {
     const ordersTab = document.getElementById('orders-tab');
     if (ordersTab) {
       ordersTab.style.display = 'block';
-      initOrdersTab(); // ✅ Changed from loadOrders()
+      initOrdersTab();
     }
   }
-  
+
   if (tab === 'admin') {
     const adminTab = document.getElementById('admin-tab');
     if (adminTab) {
       adminTab.style.display = 'block';
-      // ✅ Initialize admin panel properly
       initAdminPanel();
     }
   }
-  
+
   if (tab === 'checkout') {
     const checkoutTab = document.getElementById('checkout-tab');
     if (checkoutTab) {
@@ -67,7 +63,7 @@ window.showTab = (tab) => {
       initCheckout();
     }
   }
-  
+
   if (tab === 'confirmation') {
     const confirmationTab = document.getElementById('confirmation-tab');
     if (confirmationTab) {
@@ -78,18 +74,18 @@ window.showTab = (tab) => {
   }
 };
 
-// Global function to navigate to checkout
+// Navigate to checkout
 window.goToCheckout = () => {
   console.log('🛒 Navigating to checkout...');
-  window.toggleCart?.(); // Close cart drawer
-  showTab('checkout');
+  window.toggleCart?.();
+  window.showTab('checkout');
 };
 
-// Global function to show order confirmation
+// Show order confirmation
 window.showOrderConfirmation = (order) => {
   console.log('✅ Showing order confirmation...', order);
   currentOrder = order;
-  showTab('confirmation');
+  window.showTab('confirmation');
 };
 
 function applySavedTheme() {
@@ -133,52 +129,79 @@ function mainUI() {
 
       <!-- Auth Status -->
       <div id="auth-status" class="auth-status">
-        <span id="user-info">👋 Guest - <button onclick="showAuth()" style="background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Login/Register</button></span>
-        <button id="logout-btn" onclick="logout()" style="display: none; background: #dc3545; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; margin-left: 1rem;">Logout</button>
+        <span id="user-info">
+          👋 Guest -
+          <button
+            onclick="showAuth()"
+            style="background:#007bff;color:white;border:none;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;"
+          >
+            Login/Register
+          </button>
+        </span>
+
+        <button
+          id="logout-btn"
+          onclick="logout()"
+          style="display:none;background:#dc3545;color:white;border:none;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;margin-left:1rem;"
+        >
+          Logout
+        </button>
       </div>
 
       <!-- Tabs -->
       <div class="app-tabs" id="tabs">
         <button onclick="showTab('menu')" class="tab-btn active">🍕 Menu</button>
         <button onclick="showTab('orders')" class="tab-btn">📋 My Orders</button>
-        <button id="admin-tab-btn" onclick="showTab('admin')" class="tab-btn" style="display: none;">⚙️ Admin</button>
+        <button id="admin-tab-btn" onclick="showTab('admin')" class="tab-btn" style="display:none;">⚙️ Admin</button>
       </div>
 
       <!-- Tab Content -->
-      <div id="menu-tab" style="display: block;">${renderMenuTab()}</div>
-      <div id="checkout-tab" style="display: none;"></div>
-      <div id="confirmation-tab" style="display: none;"></div>
+      <div id="menu-tab" style="display:block;">${renderMenuTab()}</div>
+      <div id="checkout-tab" style="display:none;"></div>
+      <div id="confirmation-tab" style="display:none;"></div>
       ${renderOrdersTab()}
       ${renderAdminTab()}
 
       <!-- Cart -->
       ${renderCartDrawer()}
 
-
       <!-- Auth Modal -->
-      <div id="auth-modal" class="modal-backdrop" style="display: none;">
+      <div id="auth-modal" class="modal-backdrop" style="display:none;">
         <div class="auth-modal-card">
           <button onclick="hideAuth()" class="modal-close-btn" aria-label="Close login modal">
             ×
           </button>
 
-          <div id="auth-form" style="text-align: center;">
+          <div id="auth-form" style="text-align:center;">
             <h3 class="auth-modal-title">Welcome Back</h3>
+
+            <p style="margin-top:-0.75rem;margin-bottom:1.25rem;color:var(--color-muted);font-size:0.92rem;">
+              Login or create an account to track your orders.
+            </p>
+
+            <input
+              id="auth-name"
+              type="text"
+              placeholder="Full Name - only needed for new accounts"
+              class="input-style"
+              style="margin-bottom:1rem;"
+            >
 
             <input
               id="auth-email"
               type="email"
               placeholder="Email"
               class="input-style"
+              style="margin-bottom:1rem;"
             >
 
-            <div style="position: relative; margin-bottom: 1rem;">
+            <div style="position:relative;margin-bottom:1rem;">
               <input
                 id="auth-password"
                 type="password"
                 placeholder="Password"
                 class="input-style"
-                style="padding-right: 3rem; margin-bottom: 0;"
+                style="padding-right:3rem;margin-bottom:0;"
               >
 
               <button
@@ -197,8 +220,20 @@ function mainUI() {
               </button>
             </div>
 
-            <button onclick="handleAuthSubmit()" class="app-btn app-btn-primary" style="width: 100%; padding: 0.875rem; margin-bottom: 0.75rem;">
+            <button
+              onclick="handleAuthSubmit(false)"
+              class="app-btn app-btn-primary"
+              style="width:100%;padding:0.875rem;margin-bottom:0.75rem;"
+            >
               Login
+            </button>
+
+            <button
+              onclick="handleAuthSubmit(true)"
+              class="app-btn app-btn-secondary"
+              style="width:100%;padding:0.875rem;margin-bottom:0.75rem;"
+            >
+              Create Account
             </button>
 
             <div class="auth-divider">
@@ -206,11 +241,15 @@ function mainUI() {
               <span>or</span>
             </div>
 
-            <div id="google-signin" style="margin-bottom: 1rem;"></div>
+            <div id="google-signin" style="margin-bottom:1rem;"></div>
 
-            <p style="margin-top: 1.5rem; color: var(--color-muted); font-size: 0.9rem;">
+            <p style="margin-top:1.5rem;color:var(--color-muted);font-size:0.9rem;">
               Need help?
-              <a href="#" onclick="showForgotPassword(); return false;" style="color: var(--color-primary); text-decoration: none; font-weight: 700;">
+              <a
+                href="#"
+                onclick="showForgotPassword(); return false;"
+                style="color:var(--color-primary);text-decoration:none;font-weight:700;"
+              >
                 Forgot password?
               </a>
             </p>
@@ -226,10 +265,9 @@ window.togglePasswordVisibility = () => {
   const passwordInput = document.getElementById('auth-password');
   const eyeIcon = document.getElementById('eye-icon');
   const toggleBtn = document.getElementById('toggle-password');
-   
 
-  if (!passwordInput || !eyeIcon) return;
-  
+  if (!passwordInput || !eyeIcon || !toggleBtn) return;
+
   if (passwordInput.type === 'password') {
     passwordInput.type = 'text';
     toggleBtn.style.background = '#f0f0f0';
@@ -239,22 +277,38 @@ window.togglePasswordVisibility = () => {
   }
 };
 
-// 🔧 LOAD GOOGLE SIGN-IN
+// Load Google Sign-In
 function loadGoogleSignIn() {
-  // Load Google API script
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  if (!googleClientId) {
+    console.warn('⚠️ Missing VITE_GOOGLE_CLIENT_ID. Google Sign-In will not load.');
+    return;
+  }
+
+  if (document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
+    console.log('ℹ️ Google Sign-In script already loaded');
+    return;
+  }
+
   const script = document.createElement('script');
   script.src = 'https://accounts.google.com/gsi/client';
   script.async = true;
   script.defer = true;
+
   script.onload = () => {
     console.log('🔐 Google Sign-In library loaded');
-    
-    // Initialize Google Sign-In
-    google.accounts.id.initialize({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
+
+    if (!window.google?.accounts?.id) {
+      console.warn('⚠️ Google Sign-In library unavailable');
+      return;
+    }
+
+    window.google.accounts.id.initialize({
+      client_id: googleClientId,
       callback: async (response) => {
         console.log('✅ Google response received');
-        // Call the auth handler from auth.js
+
         if (window.handleGoogleAuth) {
           await window.handleGoogleAuth(response.credential);
         }
@@ -263,22 +317,24 @@ function loadGoogleSignIn() {
         console.error('❌ Google Sign-In error');
       }
     });
-    
-    // Render the button
+
     const googleSignInDiv = document.getElementById('google-signin');
-    if (googleSignInDiv && google.accounts.id) {
-      google.accounts.id.renderButton(
+
+    if (googleSignInDiv && window.google.accounts.id) {
+      window.google.accounts.id.renderButton(
         googleSignInDiv,
-        { 
-          theme: 'outline', 
+        {
+          theme: 'outline',
           size: 'large',
-          width: '100%',
+          width: 320,
           text: 'signin_with'
         }
       );
+
       console.log('✅ Google Sign-In button rendered');
     }
   };
+
   document.head.appendChild(script);
 }
 
@@ -286,12 +342,14 @@ async function loadApp() {
   console.log('🚀 Starting app load...');
 
   const appEl = document.getElementById('root');
+
   if (!appEl) {
     throw new Error('Missing #root container in index.html');
   }
 
   appEl.innerHTML = mainUI();
   applySavedTheme();
+
   console.log('✅ HTML rendered');
 
   loadGoogleSignIn();
@@ -304,6 +362,7 @@ async function loadApp() {
     if (typeof checkAuth === 'function') {
       await checkAuth();
     }
+
     await updateAuthUI();
   } catch (error) {
     console.warn('⚠️ Auth check failed:', error.message);
@@ -311,14 +370,23 @@ async function loadApp() {
 }
 
 // Start the app
-loadApp().catch(error => {
+loadApp().catch((error) => {
   console.error('❌ App failed to load:', error);
-  document.getElementById('root').innerHTML = `
-    <div style="text-align: center; padding: 3rem; color: #dc3545;">
-      <h2>Failed to load application</h2>
-      <p>${error.message}</p>
-      <button onclick="location.reload()" style="background: #007bff; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; margin-top: 1rem;">Reload Page</button>
-    </div>
-  `;
-});
 
+  const root = document.getElementById('root');
+
+  if (root) {
+    root.innerHTML = `
+      <div style="text-align:center;padding:3rem;color:#dc3545;">
+        <h2>Failed to load application</h2>
+        <p>${error.message}</p>
+        <button
+          onclick="location.reload()"
+          style="background:#007bff;color:white;border:none;padding:0.75rem 1.5rem;border-radius:6px;cursor:pointer;margin-top:1rem;"
+        >
+          Reload Page
+        </button>
+      </div>
+    `;
+  }
+});

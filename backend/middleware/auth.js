@@ -1,4 +1,16 @@
 // backend/middleware/auth.js
+// -------------------------------------------------------------
+// Authentication middleware for protected backend routes.
+// This file verifies JSON Web Tokens sent from the frontend,
+// loads the matching user from the database, and attaches that
+// user to req.user so later routes can identify the customer or
+// admin making the request.
+//
+// Exports:
+// - authenticate: requires a valid logged-in user
+// - adminAuth: requires the authenticated user to be an admin
+// - optionalAuth: allows either a logged-in user or a guest user
+// -------------------------------------------------------------
 const jwt = require('jsonwebtoken');
 const models = require('../models');
 const User = models.User;
