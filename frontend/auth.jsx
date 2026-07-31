@@ -65,40 +65,6 @@ export async function checkAuth() {
   }
 }
 
-export async function updateAuthUI() {
-  const status = document.getElementById('user-info');
-  const logoutBtn = document.getElementById('logout-btn');
-  const adminBtn = document.getElementById('admin-tab-btn');
-
-  if (!status) return;
-
-  if (window.currentUser) {
-    const displayName =
-      window.currentUser.name ||
-      window.currentUser.full_name ||
-      window.currentUser.email ||
-      'User';
-
-    const role = window.currentUser.role || 'customer';
-
-    status.innerHTML = `👋 ${displayName} (${role.toUpperCase()})`;
-
-    if (logoutBtn) logoutBtn.style.display = 'inline-block';
-    if (adminBtn) adminBtn.style.display = role === 'admin' ? 'block' : 'none';
-  } else {
-    status.innerHTML = `
-      👋 Guest -
-      <button onclick="showAuth()" style="background:#007bff;color:white;border:none;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;">
-        Login/Register
-      </button>
-    `;
-
-    if (logoutBtn) logoutBtn.style.display = 'none';
-    if (adminBtn) adminBtn.style.display = 'none';
-  }
-
-  window.dispatchEvent(new CustomEvent('authChanged'));
-}
 
 export async function handleAuthSubmit(isRegister = false) {
   console.log('🔐 Auth submit triggered:', { isRegister });
@@ -146,7 +112,7 @@ export async function handleAuthSubmit(isRegister = false) {
     passwordInput.value = '';
 
     const displayName = data.user?.name || data.user?.full_name || data.user?.email || 'User';
-    showToast(`Welcome ${displayName}! 👋`);
+    showToast(`Welcome ${displayName}!`);
   } catch (error) {
     console.error('Auth error:', error);
     showToast('Authentication failed. Check your backend server.', 'error');
@@ -193,6 +159,41 @@ export function logout() {
   updateAuthUI();
   showToast('Logged out successfully');
   window.location.reload();
+}
+
+export async function updateAuthUI() {
+  const status = document.getElementById('user-info');
+  const logoutBtn = document.getElementById('logout-btn');
+  const adminBtn = document.getElementById('admin-tab-btn');
+
+  if (!status) return;
+
+  if (window.currentUser) {
+    const displayName =
+      window.currentUser.name ||
+      window.currentUser.full_name ||
+      window.currentUser.email ||
+      'User';
+
+    status.innerHTML = `<span>${displayName}</span>`;
+
+    if (logoutBtn) logoutBtn.style.display = 'block';
+
+    if (adminBtn) {
+      const role = window.currentUser.role || window.currentUser.position || '';
+      adminBtn.style.display = role === 'admin' ? 'block' : 'none';
+    }
+  } else {
+    status.innerHTML = `
+      <span>Guest</span>
+      <button class="header-auth-btn" onclick="showAuth()">Login/Register</button>
+    `;
+
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    if (adminBtn) adminBtn.style.display = 'none';
+  }
+
+  window.dispatchEvent(new CustomEvent('authChanged'));
 }
 
 window.handleAuthSubmit = handleAuthSubmit;

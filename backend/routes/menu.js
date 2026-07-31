@@ -1,73 +1,33 @@
+//routes/menu.js
 const express = require('express');
-const models = require('../models');  // ✅ All models
+const models = require('../models');
+const { authenticate, adminAuth } = require('../middleware/auth');
+
 const MenuItem = models.MenuItem;
 const PizzaToppingPrice = models.PizzaToppingPrice;
 const Ingredient = models.Ingredient;
 const MenuItemDefaultTopping = models.MenuItemDefaultTopping;
-const { authenticate, adminAuth } = require('../middleware/auth');  // ✅ Add this
 
 const router = express.Router();
-
 
 // GET all menu items (public)
 router.get('/', async (req, res) => {
   try {
-    const items = await MenuItem.findAll({ where: { isAvailable: true } });
+    const items = await MenuItem.findAll({
+      where: { isAvailable: true }
+    });
+
     res.json(items);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// GET single item
-router.get('/:id', async (req, res) => {
-  try {
-    const item = await MenuItem.findByPk(req.params.id);
-    if (!item) return res.status(404).json({ error: 'Item not found' });
-    res.json(item);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// PATCH single item (admin only)
-router.patch('/:id', authenticate, adminAuth, async (req, res) => {
-  try {
-    const item = await MenuItem.findByPk(req.params.id);
-    if (!item) return res.status(404).json({ error: 'Item not found' });
-    await item.update(req.body);
-    res.json({ message: 'Updated', item });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// CREATE (admin only)
-router.post('/', authenticate, adminAuth, async (req, res) => {
-  try {
-    const item = await MenuItem.create(req.body);
-    res.status(201).json(item);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// UPDATE (admin only)
-router.put('/:id', authenticate, adminAuth, async (req, res) => {
-  try {
-    const item = await MenuItem.findByPk(req.params.id);
-    if (!item) return res.status(404).json({ error: 'Item not found' });
-    await item.update(req.body);
-    res.json(item);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-router.get('/:id/customization', async (req, res) => {
+// GET customization for one menu item
+// Must come BEFORE '/:id'
+router.get('/:id(\\d+)/customization', async (req, res) => {
   try {
     const id = Number(req.params.id);
-    console.log('Customization request for item id:', id);
 
     if (!Number.isInteger(id)) {
       return res.status(400).json({ error: 'Invalid menu item id' });
@@ -143,20 +103,85 @@ router.get('/:id/customization', async (req, res) => {
         itemPrices
       }
     });
-  } catch (err) {
-    console.error('Error fetching customization data:', err);
+  } catch (error) {
+    console.error('Error fetching customization data:', error);
     return res.status(500).json({
       error: 'Failed to fetch customization data',
-      details: err.message
+      details: error.message
     });
   }
 });
 
-// DELETE (admin only)
-router.delete('/:id', authenticate, adminAuth, async (req, res) => {
+// GET single item
+router.get('/:id(\\d+)', async (req, res) => {
   try {
     const item = await MenuItem.findByPk(req.params.id);
-    if (!item) return res.status(404).json({ error: 'Item not found' });
+
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// CREATE (admin only)
+router.post('/', authenticate, adminAuth, async (req, res) => {
+  try {
+    const item = await MenuItem.create(req.body);
+    res.status(201).json(item);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// PATCH single item (admin only)
+router.patch('/:id(\\d+)', authenticate, adminAuth, async (req, res) => {
+  try {
+    const item = await MenuItem.findByPk(req.params.id);
+
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    await item.update(req.body);
+
+    res.json({
+      message: 'Updated',
+      item
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// UPDATE (admin only)
+router.put('/:id(\\d+)', authenticate, adminAuth, async (req, res) => {
+  try {
+    const item = await MenuItem.findByPk(req.params.id);
+
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    await item.update(req.body);
+    res.json(item);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// DELETE (admin only)
+router.delete('/:id(\\d+)', authenticate, adminAuth, async (req, res) => {
+  try {
+    const item = await MenuItem.findByPk(req.params.id);
+
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
     await item.destroy();
     res.json({ message: 'Item deleted' });
   } catch (error) {
@@ -164,8 +189,4 @@ router.delete('/:id', authenticate, adminAuth, async (req, res) => {
   }
 });
 
-
-
-
-
-module.exports = router;  // ✅ EXPORT THE ROUTER, NOT THE MIDDLEWARE!
+module.exports = router;

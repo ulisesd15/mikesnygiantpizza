@@ -5,7 +5,7 @@ const { authenticate, adminAuth } = require('../middleware/auth');
 const { User, Order, MenuItem, Ingredient, OrderItem, sequelize } = require('../models');
 const { Op, fn, col, literal } = require('sequelize');
 
-// Protect all admin routes in this file
+
 router.use(authenticate);
 router.use(adminAuth);
 
@@ -34,9 +34,8 @@ function getDateRange(startDate, endDate) {
   return Object.keys(createdAt).length ? createdAt : undefined;
 }
 
-// =====================================================
+
 // DASHBOARD STATS
-// =====================================================
 
 router.get('/stats', async (req, res) => {
   try {
@@ -101,9 +100,8 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// =====================================================
 // GET ALL ORDERS
-// =====================================================
+
 
 router.get('/admin/all', async (req, res) => {
   try {

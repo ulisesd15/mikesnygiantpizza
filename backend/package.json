@@ -5,8 +5,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "seed:menu": "node seeders/seedRealMenu.js",
-    "seed:users": "node seeders/seedUsers.js",
+    "seed:menu": "npx sequelize-cli db:seed --seed seedRealMenu.js",
+    "seed:users": "npx sequelize-cli db:seed --seed seedUsers.js",
+    "seed:all": "npx sequelize-cli db:seed --seed seedUsers.js && npx sequelize-cli db:seed --seed seedRealMenu.js",
     "migration:add-oauth": "node add-oauth-fields.js"
   },
   "dependencies": {
@@ -17,7 +18,7 @@
     "google-auth-library": "^9.11.0",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.11.3",
-    "sequelize": "^6.37.4"
+    "sequelize": "^6.37.8"
   },
   "devDependencies": {
     "nodemon": "^3.1.7",

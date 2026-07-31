@@ -1,3 +1,4 @@
+//routes/inventory.js
 const express = require('express');
 const router = express.Router();
 const { authenticate, adminAuth } = require('../middleware/auth');
