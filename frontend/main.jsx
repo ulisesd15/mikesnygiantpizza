@@ -111,153 +111,165 @@ window.toggleTheme = () => {
   }
 };
 
+window.toggleHeaderMenu = () => {
+  const menu = document.getElementById('header-menu-dropdown');
+  const btn = document.getElementById('header-menu-btn');
+
+  if (!menu || !btn) return;
+
+  const isOpen = menu.style.display === 'block';
+  menu.style.display = isOpen ? 'none' : 'block';
+  btn.setAttribute('aria-expanded', String(!isOpen));
+};
+
+window.openSettings = () => {
+  showToast?.('Settings coming soon');
+};
+
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('header-menu-dropdown');
+  const btn = document.getElementById('header-menu-btn');
+
+  if (!menu || !btn) return;
+
+  const clickedInsideMenu = menu.contains(e.target);
+  const clickedButton = btn.contains(e.target);
+
+  if (!clickedInsideMenu && !clickedButton) {
+    menu.style.display = 'none';
+    btn.setAttribute('aria-expanded', 'false');
+  }
+});
+
 function mainUI() {
   return `
-    <div class="app-shell">
-      <header class="app-header">
-        <div class="app-header-row">
-          <div class="brand-lockup" onclick="showTab('menu')">
-            <h1 class="brand-title">Mike's <span>NY Giant Pizza</span></h1>
-            <p class="brand-subtitle">Modern ordering. New York flavor. Italian roots.</p>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="app-header-row">
+        <div class="brand-lockup" onclick="showTab('menu')">
+          <h1 class="brand-title">Mike's <span>NY Giant Pizza</span></h1>
+          <p class="brand-subtitle">Modern ordering. New York flavor. Italian roots.</p>
+        </div>
+
+        <div class="header-tools">
+          <div id="user-info" class="user-chip">
+            Guest
+            <button class="header-auth-btn" onclick="showAuth()">Login/Register</button>
           </div>
 
-          <button class="theme-toggle" onclick="window.toggleTheme()">
-            🌙 Dark Mode
-          </button>
-        </div>
-      </header>
-
-      <!-- Auth Status -->
-      <div id="auth-status" class="auth-status">
-        <span id="user-info">
-          👋 Guest -
-          <button
-            onclick="showAuth()"
-            style="background:#007bff;color:white;border:none;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;"
-          >
-            Login/Register
-          </button>
-        </span>
-
-        <button
-          id="logout-btn"
-          onclick="logout()"
-          style="display:none;background:#dc3545;color:white;border:none;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;margin-left:1rem;"
-        >
-          Logout
-        </button>
-      </div>
-
-      <!-- Tabs -->
-      <div class="app-tabs" id="tabs">
-        <button onclick="showTab('menu')" class="tab-btn active">🍕 Menu</button>
-        <button onclick="showTab('orders')" class="tab-btn">📋 My Orders</button>
-        <button id="admin-tab-btn" onclick="showTab('admin')" class="tab-btn" style="display:none;">⚙️ Admin</button>
-      </div>
-
-      <!-- Tab Content -->
-      <div id="menu-tab" style="display:block;">${renderMenuTab()}</div>
-      <div id="checkout-tab" style="display:none;"></div>
-      <div id="confirmation-tab" style="display:none;"></div>
-      ${renderOrdersTab()}
-      ${renderAdminTab()}
-
-      <!-- Cart -->
-      ${renderCartDrawer()}
-
-      <!-- Auth Modal -->
-      <div id="auth-modal" class="modal-backdrop" style="display:none;">
-        <div class="auth-modal-card">
-          <button onclick="hideAuth()" class="modal-close-btn" aria-label="Close login modal">
-            ×
-          </button>
-
-          <div id="auth-form" style="text-align:center;">
-            <h3 class="auth-modal-title">Welcome Back</h3>
-
-            <p style="margin-top:-0.75rem;margin-bottom:1.25rem;color:var(--color-muted);font-size:0.92rem;">
-              Login or create an account to track your orders.
-            </p>
-
-            <input
-              id="auth-name"
-              type="text"
-              placeholder="Full Name - only needed for new accounts"
-              class="input-style"
-              style="margin-bottom:1rem;"
+          <div class="header-menu-wrap">
+            <button
+              id="header-menu-btn"
+              class="header-menu-btn"
+              onclick="toggleHeaderMenu()"
+              aria-label="Open account menu"
+              aria-expanded="false"
             >
+              ☰
+            </button>
 
-            <input
-              id="auth-email"
-              type="email"
-              placeholder="Email"
-              class="input-style"
-              style="margin-bottom:1rem;"
-            >
-
-            <div style="position:relative;margin-bottom:1rem;">
-              <input
-                id="auth-password"
-                type="password"
-                placeholder="Password"
-                class="input-style"
-                style="padding-right:3rem;margin-bottom:0;"
-              >
-
+            <div id="header-menu-dropdown" class="header-menu-dropdown" style="display: none;">
+              <button class="header-menu-item" onclick="window.toggleTheme()">
+                🌙 Dark Mode
+              </button>
+              <button class="header-menu-item" onclick="openSettings()">
+                ⚙️ Settings
+              </button>
               <button
-                type="button"
-                id="toggle-password"
-                onclick="togglePasswordVisibility()"
-                class="password-toggle-btn"
-                aria-label="Toggle password visibility"
+                id="logout-btn"
+                class="header-menu-item header-menu-item-danger"
+                onclick="logout()"
+                style="display: none;"
               >
-                <span id="eye-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                </span>
+                Logout
               </button>
             </div>
-
-            <button
-              onclick="handleAuthSubmit(false)"
-              class="app-btn app-btn-primary"
-              style="width:100%;padding:0.875rem;margin-bottom:0.75rem;"
-            >
-              Login
-            </button>
-
-            <button
-              onclick="handleAuthSubmit(true)"
-              class="app-btn app-btn-secondary"
-              style="width:100%;padding:0.875rem;margin-bottom:0.75rem;"
-            >
-              Create Account
-            </button>
-
-            <div class="auth-divider">
-              <div></div>
-              <span>or</span>
-            </div>
-
-            <div id="google-signin" style="margin-bottom:1rem;"></div>
-
-            <p style="margin-top:1.5rem;color:var(--color-muted);font-size:0.9rem;">
-              Need help?
-              <a
-                href="#"
-                onclick="showForgotPassword(); return false;"
-                style="color:var(--color-primary);text-decoration:none;font-weight:700;"
-              >
-                Forgot password?
-              </a>
-            </p>
           </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Tabs -->
+    <div class="app-tabs" id="tabs">
+      <button onclick="showTab('menu')" class="tab-btn active">🍕 Menu</button>
+      <button onclick="showTab('orders')" class="tab-btn">📋 My Orders</button>
+      <button id="admin-tab-btn" onclick="showTab('admin')" class="tab-btn" style="display: none;">⚙️ Admin</button>
+    </div>
+
+    <!-- Tab Content -->
+    <div id="menu-tab" style="display: block;">${renderMenuTab()}</div>
+    <div id="checkout-tab" style="display: none;"></div>
+    <div id="confirmation-tab" style="display: none;"></div>
+    ${renderOrdersTab()}
+    ${renderAdminTab()}
+
+    <!-- Cart -->
+    ${renderCartDrawer()}
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal-backdrop" style="display: none;">
+      <div class="auth-modal-card">
+        <button onclick="hideAuth()" class="modal-close-btn" aria-label="Close login modal">
+          ×
+        </button>
+
+        <div id="auth-form" style="text-align: center;">
+          <h3 class="auth-modal-title">Welcome Back</h3>
+
+          <input
+            id="auth-email"
+            type="email"
+            placeholder="Email"
+            class="input-style"
+          >
+
+          <div style="position: relative; margin-bottom: 1rem;">
+            <input
+              id="auth-password"
+              type="password"
+              placeholder="Password"
+              class="input-style"
+              style="padding-right: 3rem; margin-bottom: 0;"
+            >
+
+            <button
+              type="button"
+              id="toggle-password"
+              onclick="togglePasswordVisibility()"
+              class="password-toggle-btn"
+              aria-label="Toggle password visibility"
+            >
+              <span id="eye-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <button onclick="handleAuthSubmit()" class="app-btn app-btn-primary" style="width: 100%; padding: 0.875rem; margin-bottom: 0.75rem;">
+            Login
+          </button>
+
+          <div class="auth-divider">
+            <div></div>
+            <span>or</span>
+          </div>
+
+          <div id="google-signin" style="margin-bottom: 1rem;"></div>
+
+          <p style="margin-top: 1.5rem; color: var(--color-muted); font-size: 0.9rem;">
+            Need help?
+            <a href="#" onclick="showForgotPassword(); return false;" style="color: var(--color-primary); text-decoration: none; font-weight: 700;">
+              Forgot password?
+            </a>
+          </p>
         </div>
       </div>
     </div>
-  `;
+  </div>
+`;
 }
 
 // Password toggle functionality
@@ -362,8 +374,6 @@ async function loadApp() {
     if (typeof checkAuth === 'function') {
       await checkAuth();
     }
-
-    await updateAuthUI();
   } catch (error) {
     console.warn('⚠️ Auth check failed:', error.message);
   }

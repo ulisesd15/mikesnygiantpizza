@@ -1,12 +1,4 @@
 // backend/models/ingredient.js
-// -------------------------------------------------------------
-// Ingredient model.
-// Stores inventory ingredients and toppings, including current stock,
-// reorder level, unit type, unit cost, and supplier information.
-// Ingredients are used for pizza toppings, menu defaults, topping
-// prices, and future recipe/inventory tracking.
-// -------------------------------------------------------------
-
 module.exports = (sequelize, DataTypes) => {
   const Ingredient = sequelize.define(
     'Ingredient',
@@ -16,32 +8,30 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
         autoIncrement: true
       },
-
       name: {
         type: DataTypes.STRING,
         allowNull: false
       },
-
       currentStock: {
         type: DataTypes.INTEGER,
+        allowNull: false,
         defaultValue: 0
       },
-
       reorderLevel: {
         type: DataTypes.INTEGER,
+        allowNull: false,
         defaultValue: 10
       },
-
       unit: {
         type: DataTypes.STRING,
+        allowNull: false,
         defaultValue: 'pieces'
       },
-
       unitCost: {
         type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
         defaultValue: 0
       },
-
       supplier: {
         type: DataTypes.STRING,
         allowNull: true
@@ -54,26 +44,45 @@ module.exports = (sequelize, DataTypes) => {
   );
 
   Ingredient.associate = (models) => {
+    Ingredient.hasMany(models.Recipe, {
+      foreignKey: 'ingredientId',
+      as: 'recipes'
+    });
+
     Ingredient.belongsToMany(models.MenuItem, {
-      through: models.MenuItemDefaultTopping || 'menu_item_default_toppings',
+      through: models.Recipe,
       foreignKey: 'ingredientId',
       otherKey: 'menuItemId',
-      as: 'defaultOnPizzas'
+      as: 'recipeMenuItems'
     });
 
     Ingredient.hasMany(models.MenuItemDefaultTopping, {
       foreignKey: 'ingredientId',
-      as: 'defaultToppingRows'
+      as: 'defaultToppingLinks'
     });
 
-    Ingredient.hasMany(models.PizzaToppingPrice, {
+    Ingredient.belongsToMany(models.MenuItem, {
+      through: models.MenuItemDefaultTopping,
       foreignKey: 'ingredientId',
-      as: 'toppingPrices'
+      otherKey: 'menuItemId',
+      as: 'defaultOnMenuItems'
     });
 
-    Ingredient.hasMany(models.Recipe, {
+    Ingredient.hasMany(models.MenuItemAllowedIngredient, {
       foreignKey: 'ingredientId',
-      as: 'recipes'
+      as: 'allowedIngredientLinks'
+    });
+
+    Ingredient.belongsToMany(models.MenuItem, {
+      through: models.MenuItemAllowedIngredient,
+      foreignKey: 'ingredientId',
+      otherKey: 'menuItemId',
+      as: 'allowedOnMenuItems'
+    });
+
+    Ingredient.hasMany(models.IngredientExtraPrice, {
+      foreignKey: 'ingredientId',
+      as: 'extraPrices'
     });
   };
 
