@@ -1,4 +1,4 @@
-// ✅ Vite env vars FIRST (highest priority)
+//frontend/config.js
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 
   (import.meta.env.DEV 
     ? 'http://localhost:5001/api' 
@@ -19,7 +19,7 @@ export const API_ROUTES = {
   profile: '/auth/profile',
   
   // Menu
-  menu: '/menu',
+  menu: 'menu/menu',
   menuItem: (id) => `/menu/${id}`,
   menuCustomization: (id) => `/menu/${id}/customization`,
   

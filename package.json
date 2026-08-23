@@ -1,22 +1,17 @@
 {
   "name": "mikesnygiantpizza",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "concurrently \"vite\" \"cd backend && npm run start\"",
-    "dev:frontend": "vite --port 5173",
-    "dev:backend": "cd backend && npm run start",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "concurrently \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\"",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "build": "npm run build --prefix frontend",
+    "preview": "npm run preview --prefix frontend",
+    "seed:menu": "npm run seed:menu --prefix backend",
+    "seed:users": "npm run seed:users --prefix backend",
+    "seed:all": "npm run seed:all --prefix backend"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^5.1.2",
-    "concurrently": "^8.2.2",
-    "vite": "^7.3.1"
-  },
-  "dependencies": {
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "concurrently": "^8.2.2"
   }
 }
