@@ -1,4 +1,11 @@
 // backend/middleware/admin.js
+// -------------------------------------------------------------
+// Admin authorization middleware.
+// This middleware checks whether the authenticated user has an
+// admin role before allowing access to protected admin routes.
+// It assumes that authentication middleware has already verified
+// the user and attached the user object to req.user.
+// -------------------------------------------------------------
 const isAdmin = (req, res, next) => {
   try {
     // Check if user exists (should be set by auth middleware)

@@ -1,3 +1,4 @@
+//frontend/auth.jsx
 import { apiUrl } from './config.js';
 
 function showToast(message, type = 'info') {
@@ -69,6 +70,7 @@ export async function checkAuth() {
 export async function handleAuthSubmit(isRegister = false) {
   console.log('🔐 Auth submit triggered:', { isRegister });
 
+  const nameInput = document.getElementById('auth-name');
   const emailInput = document.getElementById('auth-email');
   const passwordInput = document.getElementById('auth-password');
 
@@ -77,27 +79,44 @@ export async function handleAuthSubmit(isRegister = false) {
     return;
   }
 
+  const name = nameInput ? nameInput.value.trim() : '';
   const email = emailInput.value.trim();
   const password = passwordInput.value.trim();
 
   if (!email || !password) {
-    showToast('Please fill all fields', 'error');
+    showToast('Please enter your email and password', 'error');
+    return;
+  }
+
+  if (isRegister && !name) {
+    showToast('Please enter your full name to create an account', 'error');
     return;
   }
 
   try {
-    const endpoint = isRegister ? apiUrl('/auth/register') : apiUrl('/auth/login');
+    const endpoint = isRegister
+      ? apiUrl('/auth/register')
+      : apiUrl('/auth/login');
+
+    const payload = isRegister
+      ? { name, email, password }
+      : { email, password };
 
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(payload),
     });
 
     const data = await safeJson(res);
 
     if (!res.ok) {
-      showToast(data.error || data.message || 'Invalid email or password', 'error');
+      showToast(data.error || data.message || 'Authentication failed', 'error');
+      return;
+    }
+
+    if (!data.token || !data.user) {
+      showToast('Invalid server response. Missing token or user.', 'error');
       return;
     }
 
@@ -108,6 +127,7 @@ export async function handleAuthSubmit(isRegister = false) {
     await updateAuthUI();
     window.hideAuth?.();
 
+    if (nameInput) nameInput.value = '';
     emailInput.value = '';
     passwordInput.value = '';
 
@@ -141,7 +161,7 @@ export async function handleGoogleAuth(credential) {
     await updateAuthUI();
     window.hideAuth?.();
 
-    const displayName = data.user?.name || data.user?.full_name || data.user?.email || 'User';
+    const displayName = data.user?.name || data.user?.email || 'User';
     showToast(`Welcome ${displayName}! 🎉`);
 
     return data.user;
@@ -209,9 +229,11 @@ window.hideAuth = () => {
   const modal = document.getElementById('auth-modal');
   if (modal) modal.style.display = 'none';
 
+  const nameInput = document.getElementById('auth-name');
   const emailInput = document.getElementById('auth-email');
   const passwordInput = document.getElementById('auth-password');
 
+  if (nameInput) nameInput.value = '';
   if (emailInput) emailInput.value = '';
   if (passwordInput) passwordInput.value = '';
 };
@@ -230,6 +252,7 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     const modal = document.getElementById('auth-modal');
+
     if (modal && modal.style.display !== 'none') {
       handleAuthSubmit(false);
     }

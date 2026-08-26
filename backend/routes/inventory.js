@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, adminAuth } = require('../middleware/auth');
-const { Ingredient } = require('../models');
+const { Ingredient, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 // Protect ALL inventory routes - admin only
@@ -22,8 +22,7 @@ router.get('/', async (req, res) => {
     // Search by name
     if (search) {
       whereClause.name = {
-        [Op.iLike]: `%${search}%`
-      };
+      [Op.like]: `%${search}%`      };
     }
     
     // Filter low stock items

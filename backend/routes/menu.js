@@ -4,10 +4,6 @@ const models = require('../models');
 const { authenticate, adminAuth } = require('../middleware/auth');
 
 const MenuItem = models.MenuItem;
-const PizzaToppingPrice = models.PizzaToppingPrice;
-const Ingredient = models.Ingredient;
-const MenuItemDefaultTopping = models.MenuItemDefaultTopping;
-
 const router = express.Router();
 
 // GET all menu items (public)

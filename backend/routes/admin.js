@@ -103,7 +103,7 @@ router.get('/stats', async (req, res) => {
 // GET ALL ORDERS
 
 
-router.get('/admin/all', async (req, res) => {
+router.get('/all', async (req, res) => {
   try {
     console.log('📋 Getting all orders for admin:', req.user.email);
 
@@ -204,7 +204,7 @@ router.get('/users', async (req, res) => {
       include: [
         {
           model: Order,
-          as: 'Orders',
+          as: 'orders',
           attributes: []
         }
       ],
@@ -252,7 +252,7 @@ router.get('/users/:id', async (req, res) => {
       include: [
         {
           model: Order,
-          as: 'Orders',
+          as: 'orders',
           separate: true,
           limit: 20,
           order: [['createdAt', 'DESC']],

@@ -1,39 +1,36 @@
 // main.jsx
 import { renderCartDrawer, initCartDrawer } from './src/components/cart/cartDrawer.jsx';
 import { renderMenuTab, loadMenu, initMenuGlobalFunctions } from './src/components/menuRenderer.jsx';
-import { renderAdminTab, initAdminPanel, loadAdminMenu } from './src/components/admin/adminPanel.jsx';
+import { renderAdminTab, initAdminPanel } from './src/components/admin/adminPanel.jsx';
 import { renderOrdersTab, initOrdersTab } from './src/components/orders/ordersTab.jsx';
 import { renderCheckoutPage, initCheckout } from './src/components/checkout/CheckoutPage.jsx';
 import { renderOrderConfirmation, initOrderConfirmation } from './src/components/orders/OrderConfirmation.jsx';
 
-import { checkAuth, updateAuthUI } from './auth.jsx'; 
+import { checkAuth, updateAuthUI } from './auth.jsx';
 
+document.title = "Mike's NY Giant Pizza - Online Ordering";
 
+let currentOrder = null;
 
-
-
-document.title = 'Mike\'s NY Giant Pizza - Online Ordering';
-
-let currentOrder = null; // Store current order for confirmation page
-
-// Helper to toggle admin button visibility
-
-// 🔧 DEFINE showTab BEFORE loadApp()
+// Define showTab before loadApp()
 window.showTab = (tab) => {
   console.log('📑 Switching to tab:', tab);
 
   document.documentElement.dataset.activeTab = tab;
 
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.classList.remove('active');
+  });
+
   const activeBtn = document.querySelector(`[onclick="showTab('${tab}')"]`);
   if (activeBtn) activeBtn.classList.add('active');
-  
+
   // Hide all tabs
-  ['menu-tab', 'orders-tab', 'admin-tab', 'checkout-tab', 'confirmation-tab'].forEach(id => {
+  ['menu-tab', 'orders-tab', 'admin-tab', 'checkout-tab', 'confirmation-tab'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
-  
+
   if (tab === 'menu') {
     const menuTab = document.getElementById('menu-tab');
     if (menuTab) {
@@ -41,24 +38,23 @@ window.showTab = (tab) => {
       console.log('✅ Menu tab now visible');
     }
   }
-  
+
   if (tab === 'orders') {
     const ordersTab = document.getElementById('orders-tab');
     if (ordersTab) {
       ordersTab.style.display = 'block';
-      initOrdersTab(); // ✅ Changed from loadOrders()
+      initOrdersTab();
     }
   }
-  
+
   if (tab === 'admin') {
     const adminTab = document.getElementById('admin-tab');
     if (adminTab) {
       adminTab.style.display = 'block';
-      // ✅ Initialize admin panel properly
       initAdminPanel();
     }
   }
-  
+
   if (tab === 'checkout') {
     const checkoutTab = document.getElementById('checkout-tab');
     if (checkoutTab) {
@@ -67,7 +63,7 @@ window.showTab = (tab) => {
       initCheckout();
     }
   }
-  
+
   if (tab === 'confirmation') {
     const confirmationTab = document.getElementById('confirmation-tab');
     if (confirmationTab) {
@@ -78,18 +74,18 @@ window.showTab = (tab) => {
   }
 };
 
-// Global function to navigate to checkout
+// Navigate to checkout
 window.goToCheckout = () => {
   console.log('🛒 Navigating to checkout...');
-  window.toggleCart?.(); // Close cart drawer
-  showTab('checkout');
+  window.toggleCart?.();
+  window.showTab('checkout');
 };
 
-// Global function to show order confirmation
+// Show order confirmation
 window.showOrderConfirmation = (order) => {
   console.log('✅ Showing order confirmation...', order);
   currentOrder = order;
-  showTab('confirmation');
+  window.showTab('confirmation');
 };
 
 function applySavedTheme() {
@@ -281,10 +277,9 @@ window.togglePasswordVisibility = () => {
   const passwordInput = document.getElementById('auth-password');
   const eyeIcon = document.getElementById('eye-icon');
   const toggleBtn = document.getElementById('toggle-password');
-   
 
-  if (!passwordInput || !eyeIcon) return;
-  
+  if (!passwordInput || !eyeIcon || !toggleBtn) return;
+
   if (passwordInput.type === 'password') {
     passwordInput.type = 'text';
     toggleBtn.style.background = '#f0f0f0';
@@ -294,22 +289,38 @@ window.togglePasswordVisibility = () => {
   }
 };
 
-// 🔧 LOAD GOOGLE SIGN-IN
+// Load Google Sign-In
 function loadGoogleSignIn() {
-  // Load Google API script
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  if (!googleClientId) {
+    console.warn('⚠️ Missing VITE_GOOGLE_CLIENT_ID. Google Sign-In will not load.');
+    return;
+  }
+
+  if (document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
+    console.log('ℹ️ Google Sign-In script already loaded');
+    return;
+  }
+
   const script = document.createElement('script');
   script.src = 'https://accounts.google.com/gsi/client';
   script.async = true;
   script.defer = true;
+
   script.onload = () => {
     console.log('🔐 Google Sign-In library loaded');
-    
-    // Initialize Google Sign-In
-    google.accounts.id.initialize({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
+
+    if (!window.google?.accounts?.id) {
+      console.warn('⚠️ Google Sign-In library unavailable');
+      return;
+    }
+
+    window.google.accounts.id.initialize({
+      client_id: googleClientId,
       callback: async (response) => {
         console.log('✅ Google response received');
-        // Call the auth handler from auth.js
+
         if (window.handleGoogleAuth) {
           await window.handleGoogleAuth(response.credential);
         }
@@ -318,22 +329,24 @@ function loadGoogleSignIn() {
         console.error('❌ Google Sign-In error');
       }
     });
-    
-    // Render the button
+
     const googleSignInDiv = document.getElementById('google-signin');
-    if (googleSignInDiv && google.accounts.id) {
-      google.accounts.id.renderButton(
+
+    if (googleSignInDiv && window.google.accounts.id) {
+      window.google.accounts.id.renderButton(
         googleSignInDiv,
-        { 
-          theme: 'outline', 
+        {
+          theme: 'outline',
           size: 'large',
-          width: '100%',
+          width: 320,
           text: 'signin_with'
         }
       );
+
       console.log('✅ Google Sign-In button rendered');
     }
   };
+
   document.head.appendChild(script);
 }
 
@@ -341,12 +354,14 @@ async function loadApp() {
   console.log('🚀 Starting app load...');
 
   const appEl = document.getElementById('root');
+
   if (!appEl) {
     throw new Error('Missing #root container in index.html');
   }
 
   appEl.innerHTML = mainUI();
   applySavedTheme();
+
   console.log('✅ HTML rendered');
 
   loadGoogleSignIn();
@@ -365,14 +380,23 @@ async function loadApp() {
 }
 
 // Start the app
-loadApp().catch(error => {
+loadApp().catch((error) => {
   console.error('❌ App failed to load:', error);
-  document.getElementById('root').innerHTML = `
-    <div style="text-align: center; padding: 3rem; color: #dc3545;">
-      <h2>Failed to load application</h2>
-      <p>${error.message}</p>
-      <button onclick="location.reload()" style="background: #007bff; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; margin-top: 1rem;">Reload Page</button>
-    </div>
-  `;
-});
 
+  const root = document.getElementById('root');
+
+  if (root) {
+    root.innerHTML = `
+      <div style="text-align:center;padding:3rem;color:#dc3545;">
+        <h2>Failed to load application</h2>
+        <p>${error.message}</p>
+        <button
+          onclick="location.reload()"
+          style="background:#007bff;color:white;border:none;padding:0.75rem 1.5rem;border-radius:6px;cursor:pointer;margin-top:1rem;"
+        >
+          Reload Page
+        </button>
+      </div>
+    `;
+  }
+});
